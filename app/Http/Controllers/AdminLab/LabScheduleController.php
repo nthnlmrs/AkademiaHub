@@ -48,6 +48,34 @@ class LabScheduleController extends Controller
             return redirect()->back()->withErrors(['class_room_id' => 'Only LAB classes can be managed here.'])->withInput();
         }
 
+        // Check Room Conflict
+        if (!empty($validated['room'])) {
+            $roomConflict = Schedule::where('room', $validated['room'])
+                ->where('day_of_week', $validated['day_of_week'])
+                ->where('start_time', '<', $validated['end_time'])
+                ->where('end_time', '>', $validated['start_time'])
+                ->exists();
+
+            if ($roomConflict) {
+                return redirect()->back()->withErrors(['room' => 'The room is already booked for the given time.'])->withInput();
+            }
+        }
+
+        // Check Lecturer Conflict (since TAs might be lecturing or regular lecturers)
+        foreach ($classRoom->lecturers as $lecturer) {
+            $lecturerConflict = Schedule::whereHas('classRoom.users', function($q) use ($lecturer) {
+                    $q->where('users.id', $lecturer->id);
+                })
+                ->where('day_of_week', $validated['day_of_week'])
+                ->where('start_time', '<', $validated['end_time'])
+                ->where('end_time', '>', $validated['start_time'])
+                ->exists();
+
+            if ($lecturerConflict) {
+                return redirect()->back()->withErrors(['time' => 'Lecturer ' . $lecturer->name . ' already has another class at this time.'])->withInput();
+            }
+        }
+
         // Check schedule conflicts for all enrolled students in this class
         $conflicts = $this->checkScheduleConflicts(
             $classRoom,
@@ -95,6 +123,36 @@ class LabScheduleController extends Controller
         $classRoom = ClassRoom::findOrFail($validated['class_room_id']);
         if ($classRoom->type !== 'LAB') {
             return redirect()->back()->withErrors(['class_room_id' => 'Only LAB classes can be managed here.'])->withInput();
+        }
+
+        // Check Room Conflict
+        if (!empty($validated['room'])) {
+            $roomConflict = Schedule::where('room', $validated['room'])
+                ->where('id', '!=', $schedule->id)
+                ->where('day_of_week', $validated['day_of_week'])
+                ->where('start_time', '<', $validated['end_time'])
+                ->where('end_time', '>', $validated['start_time'])
+                ->exists();
+
+            if ($roomConflict) {
+                return redirect()->back()->withErrors(['room' => 'The room is already booked for the given time.'])->withInput();
+            }
+        }
+
+        // Check Lecturer Conflict (since TAs might be lecturing or regular lecturers)
+        foreach ($classRoom->lecturers as $lecturer) {
+            $lecturerConflict = Schedule::whereHas('classRoom.users', function($q) use ($lecturer) {
+                    $q->where('users.id', $lecturer->id);
+                })
+                ->where('id', '!=', $schedule->id)
+                ->where('day_of_week', $validated['day_of_week'])
+                ->where('start_time', '<', $validated['end_time'])
+                ->where('end_time', '>', $validated['start_time'])
+                ->exists();
+
+            if ($lecturerConflict) {
+                return redirect()->back()->withErrors(['time' => 'Lecturer ' . $lecturer->name . ' already has another class at this time.'])->withInput();
+            }
         }
 
         // Check conflicts excluding the current schedule

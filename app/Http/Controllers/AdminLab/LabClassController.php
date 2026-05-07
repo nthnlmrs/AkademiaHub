@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\ClassRoom;
 use App\Models\Course;
 use App\Models\User;
+use App\Rules\UserHasRole;
+use App\Rules\UserHasStudentType;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -42,7 +44,7 @@ class LabClassController extends Controller
         $teachingAssistants = User::where('role', 'student')
             ->where('student_type', 'teaching_assistant')
             ->orderBy('name')->get();
-        $students = User::where('role', 'student')->orderBy('name')->get();
+        $students = User::where('role', 'student')->where('student_type', 'regular')->orderBy('name')->get();
 
         return view('admin_lab.classes.create', compact('courses', 'lecturers', 'teachingAssistants', 'students'));
     }
@@ -55,11 +57,11 @@ class LabClassController extends Controller
             'mode' => ['required', Rule::in(['onsite', 'online'])],
             'room' => ['nullable', 'string', 'max:50'],
             'lecturers' => ['nullable', 'array'],
-            'lecturers.*' => ['exists:users,id'],
+            'lecturers.*' => ['exists:users,id', new UserHasRole('lecturer')],
             'teaching_assistants' => ['nullable', 'array'],
-            'teaching_assistants.*' => ['exists:users,id'],
+            'teaching_assistants.*' => ['exists:users,id', new UserHasStudentType('teaching_assistant')],
             'students' => ['nullable', 'array'],
-            'students.*' => ['exists:users,id'],
+            'students.*' => ['exists:users,id', new UserHasStudentType('regular')],
         ]);
 
         $classRoom = ClassRoom::create([
@@ -94,7 +96,7 @@ class LabClassController extends Controller
         $teachingAssistants = User::where('role', 'student')
             ->where('student_type', 'teaching_assistant')
             ->orderBy('name')->get();
-        $students = User::where('role', 'student')->orderBy('name')->get();
+        $students = User::where('role', 'student')->where('student_type', 'regular')->orderBy('name')->get();
 
         $selectedLecturers = $classroom->lecturers->pluck('id')->toArray();
         $selectedTAs = $classroom->teachingAssistants->pluck('id')->toArray();
@@ -118,11 +120,11 @@ class LabClassController extends Controller
             'mode' => ['required', Rule::in(['onsite', 'online'])],
             'room' => ['nullable', 'string', 'max:50'],
             'lecturers' => ['nullable', 'array'],
-            'lecturers.*' => ['exists:users,id'],
+            'lecturers.*' => ['exists:users,id', new UserHasRole('lecturer')],
             'teaching_assistants' => ['nullable', 'array'],
-            'teaching_assistants.*' => ['exists:users,id'],
+            'teaching_assistants.*' => ['exists:users,id', new UserHasStudentType('teaching_assistant')],
             'students' => ['nullable', 'array'],
-            'students.*' => ['exists:users,id'],
+            'students.*' => ['exists:users,id', new UserHasStudentType('regular')],
         ]);
 
         $classroom->update([
@@ -132,12 +134,27 @@ class LabClassController extends Controller
             'room' => $validated['room'] ?? null,
         ]);
 
-        $members = array_merge(
-            $validated['lecturers'] ?? [],
-            $validated['teaching_assistants'] ?? [],
-            $validated['students'] ?? []
-        );
-        $classroom->users()->sync($members);
+        $membersToSync = [];
+        if ($request->has('lecturers')) {
+            $membersToSync = array_merge($membersToSync, $validated['lecturers'] ?? []);
+        } else {
+            $membersToSync = array_merge($membersToSync, $classroom->lecturers()->pluck('users.id')->toArray());
+        }
+
+        if ($request->has('teaching_assistants')) {
+            $membersToSync = array_merge($membersToSync, $validated['teaching_assistants'] ?? []);
+        } else {
+            $membersToSync = array_merge($membersToSync, $classroom->teachingAssistants()->pluck('users.id')->toArray());
+        }
+
+        if ($request->has('students')) {
+            $membersToSync = array_merge($membersToSync, $validated['students'] ?? []);
+        } else {
+            $regularStudents = $classroom->students()->where('student_type', 'regular')->pluck('users.id')->toArray();
+            $membersToSync = array_merge($membersToSync, $regularStudents);
+        }
+
+        $classroom->users()->sync($membersToSync);
 
         return redirect()->route('admin_lab.classes.index')
             ->with('success', 'LAB class updated successfully.');

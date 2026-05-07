@@ -12,10 +12,8 @@ class SyllabusController extends Controller
 {
     public function show(ClassRoom $classroom)
     {
-        $user = Auth::user();
-
-        if (!$user->isAdmin() && !$classroom->users->contains($user->id)) {
-            abort(403);
+        if (!Auth::user()->can('view', $classroom)) {
+            abort(403, 'Unauthorized');
         }
 
         $classroom->load(['course', 'syllabus']);
@@ -26,10 +24,8 @@ class SyllabusController extends Controller
 
     public function store(Request $request, ClassRoom $classroom)
     {
-        $user = Auth::user();
-
-        if (!$user->isAdmin() && !$user->isLecturer()) {
-            abort(403);
+        if (!Auth::user()->can('manage', $classroom)) {
+            abort(403, 'Only lecturers of this class can manage the syllabus.');
         }
 
         $validated = $request->validate([
