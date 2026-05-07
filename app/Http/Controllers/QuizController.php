@@ -95,6 +95,10 @@ class QuizController extends Controller
             abort(403, 'Unauthorized.');
         }
 
+        if ($quiz->session->course_id !== $classroom->course_id) {
+            abort(404, 'Quiz not found in this class.');
+        }
+
         $quiz->load('questions');
 
         // Check if student has already attempted
@@ -112,6 +116,10 @@ class QuizController extends Controller
 
         if (!$user->isAdmin() && !$classroom->users->contains($user->id)) {
             abort(403, 'Unauthorized.');
+        }
+
+        if ($quiz->session->course_id !== $classroom->course_id) {
+            abort(404, 'Quiz not found in this class.');
         }
 
         // Ensure user hasn't already submitted

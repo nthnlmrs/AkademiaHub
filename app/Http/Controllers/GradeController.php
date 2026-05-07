@@ -11,11 +11,10 @@ class GradeController extends Controller
 {
     public function index(ClassRoom $classroom)
     {
-        $user = Auth::user();
-
-        if (!$user->isAdmin() && !$classroom->users->contains($user->id)) {
-            abort(403);
+        if (!Auth::user()->can('view', $classroom)) {
+            abort(403, 'Unauthorized');
         }
+        $user = Auth::user();
 
         $classroom->load(['course.rubrics', 'students', 'lecturers']);
         $rubrics = $classroom->course->rubrics;
@@ -42,10 +41,8 @@ class GradeController extends Controller
 
     public function storeRubric(Request $request, ClassRoom $classroom)
     {
-        $user = Auth::user();
-
-        if (!$user->isAdmin() && !$user->isLecturer()) {
-            abort(403);
+        if (!Auth::user()->can('manage', $classroom)) {
+            abort(403, 'Only lecturers of this class can manage rubrics.');
         }
 
         $validated = $request->validate([
@@ -60,10 +57,8 @@ class GradeController extends Controller
 
     public function store(Request $request, ClassRoom $classroom)
     {
-        $user = Auth::user();
-
-        if (!$user->isAdmin() && !$user->isLecturer() && !$user->isTeachingAssistant()) {
-            abort(403);
+        if (!Auth::user()->can('assist', $classroom)) {
+            abort(403, 'Unauthorized.');
         }
 
         $validated = $request->validate([
@@ -74,6 +69,15 @@ class GradeController extends Controller
             'score' => ['required', 'numeric', 'min:0'],
             'max_score' => ['required', 'numeric', 'min:0'],
         ]);
+
+        if (!$classroom->students()->where('users.id', $validated['user_id'])->exists()) {
+            abort(403, 'The specified user is not a student in this classroom.');
+        }
+
+        $rubric = \App\Models\GradeRubric::find($validated['grade_rubric_id']);
+        if ($rubric->course_id !== $classroom->course_id) {
+            abort(403, 'The specified rubric does not belong to this course.');
+        }
 
         Grade::updateOrCreate(
             [
@@ -94,10 +98,8 @@ class GradeController extends Controller
 
     public function destroy(Grade $grade)
     {
-        $user = Auth::user();
-
-        if (!$user->isAdmin() && !$user->isLecturer()) {
-            abort(403);
+        if (!Auth::user()->can('manage', $grade->classRoom)) {
+            abort(403, 'Unauthorized to delete this grade.');
         }
 
         $grade->delete();
@@ -107,10 +109,8 @@ class GradeController extends Controller
 
     public function syncQuizzes(Request $request, ClassRoom $classroom)
     {
-        $user = Auth::user();
-
-        if (!$user->isAdmin() && !$user->isLecturer()) {
-            abort(403);
+        if (!Auth::user()->can('manage', $classroom)) {
+            abort(403, 'Only lecturers of this class can sync quizzes.');
         }
 
         $validated = $request->validate([

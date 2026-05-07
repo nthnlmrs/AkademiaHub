@@ -19,7 +19,7 @@ use App\Http\Controllers\SyllabusController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
-    return redirect()->route('login');
+    return auth()->check() ? redirect()->route('dashboard') : redirect()->route('login');
 });
 
 Route::get('/dashboard', [DashboardController::class, 'index'])

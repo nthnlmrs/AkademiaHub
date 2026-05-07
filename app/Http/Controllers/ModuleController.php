@@ -44,9 +44,17 @@ class ModuleController extends Controller
     public function download(Module $module)
     {
         $user = Auth::user();
-        $classRoom = $module->courseSession->classRoom;
 
-        if (!$user->isAdmin() && !$classRoom->users->contains($user->id)) {
+        // Since CourseSession is now attached to Course, we check if the user is enrolled in any classroom of that course
+        $hasAccess = $user->isAdmin();
+        if (!$hasAccess) {
+            $hasAccess = $module->courseSession->course->classRooms()
+                ->whereHas('users', function($q) use ($user) {
+                    $q->where('users.id', $user->id);
+                })->exists();
+        }
+
+        if (!$hasAccess) {
             abort(403, 'You do not have access to this file.');
         }
 
@@ -57,7 +65,24 @@ class ModuleController extends Controller
     {
         $user = Auth::user();
 
-        if (!$user->isAdmin() && $module->uploaded_by !== $user->id) {
+        // Find the classroom this module belongs to, based on the course session
+        // Note: CourseSession is now under Course, so we get the classroom by querying. Wait, the module might belong to a session, which belongs to a course, and many classrooms could be using it.
+        // Actually, if modules belong to CourseSession, and the user is a lecturer for ANY classroom of that course, they might have access, OR just admin/owner.
+        // Let's allow if user is admin, owner, or lecturer of a class that uses this session's course.
+        $hasPermission = $user->isAdmin() || $module->uploaded_by === $user->id;
+
+        if (!$hasPermission) {
+            $isCourseLecturer = $module->courseSession->course->classRooms()
+                ->whereHas('users', function ($q) use ($user) {
+                    $q->where('users.id', $user->id)->where('role', 'lecturer');
+                })->exists();
+
+            if ($isCourseLecturer) {
+                $hasPermission = true;
+            }
+        }
+
+        if (!$hasPermission) {
             abort(403, 'You do not have permission to delete this module.');
         }
 

@@ -56,6 +56,18 @@ class ForumController extends Controller
             'parent_id' => ['nullable', 'exists:forum_posts,id'],
         ]);
 
+        $session = \App\Models\CourseSession::find($validated['course_session_id']);
+        if ($session->course_id !== $classroom->course_id) {
+            abort(403, 'The specified session does not belong to this class.');
+        }
+
+        if (isset($validated['parent_id'])) {
+            $parent = ForumPost::find($validated['parent_id']);
+            if ($parent->class_room_id !== $classroom->id) {
+                abort(403, 'The specified parent post does not belong to this class.');
+            }
+        }
+
         $post = ForumPost::create([
             'class_room_id' => $classroom->id,
             'course_session_id' => $validated['course_session_id'],
@@ -76,8 +88,9 @@ class ForumController extends Controller
     {
         $user = Auth::user();
 
-        if (!$user->isAdmin() && $post->user_id !== $user->id) {
-            abort(403);
+        // Check if user is admin, owner of the post, or a lecturer of the classroom
+        if (!$user->isAdmin() && $post->user_id !== $user->id && !$user->can('manage', $post->classRoom)) {
+            abort(403, 'Unauthorized to delete this post.');
         }
 
         $post->delete();

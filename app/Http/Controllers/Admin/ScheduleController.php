@@ -40,6 +40,36 @@ class ScheduleController extends Controller
             'room' => ['nullable', 'string', 'max:50'],
         ]);
 
+        $classRoom = ClassRoom::findOrFail($validated['class_room_id']);
+
+        // Check Room Conflict
+        if (!empty($validated['room'])) {
+            $roomConflict = Schedule::where('room', $validated['room'])
+                ->where('day_of_week', $validated['day_of_week'])
+                ->where('start_time', '<', $validated['end_time'])
+                ->where('end_time', '>', $validated['start_time'])
+                ->exists();
+
+            if ($roomConflict) {
+                return redirect()->back()->withErrors(['room' => 'The room is already booked for the given time.'])->withInput();
+            }
+        }
+
+        // Check Lecturer Conflict
+        foreach ($classRoom->lecturers as $lecturer) {
+            $lecturerConflict = Schedule::whereHas('classRoom.users', function($q) use ($lecturer) {
+                    $q->where('users.id', $lecturer->id);
+                })
+                ->where('day_of_week', $validated['day_of_week'])
+                ->where('start_time', '<', $validated['end_time'])
+                ->where('end_time', '>', $validated['start_time'])
+                ->exists();
+
+            if ($lecturerConflict) {
+                return redirect()->back()->withErrors(['time' => 'Lecturer ' . $lecturer->name . ' already has another class at this time.'])->withInput();
+            }
+        }
+
         Schedule::create($validated);
 
         return redirect()->route('admin.schedules.index')
@@ -61,6 +91,38 @@ class ScheduleController extends Controller
             'end_time' => ['required', 'date_format:H:i', 'after:start_time'],
             'room' => ['nullable', 'string', 'max:50'],
         ]);
+
+        $classRoom = ClassRoom::findOrFail($validated['class_room_id']);
+
+        // Check Room Conflict
+        if (!empty($validated['room'])) {
+            $roomConflict = Schedule::where('room', $validated['room'])
+                ->where('id', '!=', $schedule->id)
+                ->where('day_of_week', $validated['day_of_week'])
+                ->where('start_time', '<', $validated['end_time'])
+                ->where('end_time', '>', $validated['start_time'])
+                ->exists();
+
+            if ($roomConflict) {
+                return redirect()->back()->withErrors(['room' => 'The room is already booked for the given time.'])->withInput();
+            }
+        }
+
+        // Check Lecturer Conflict
+        foreach ($classRoom->lecturers as $lecturer) {
+            $lecturerConflict = Schedule::whereHas('classRoom.users', function($q) use ($lecturer) {
+                    $q->where('users.id', $lecturer->id);
+                })
+                ->where('id', '!=', $schedule->id)
+                ->where('day_of_week', $validated['day_of_week'])
+                ->where('start_time', '<', $validated['end_time'])
+                ->where('end_time', '>', $validated['start_time'])
+                ->exists();
+
+            if ($lecturerConflict) {
+                return redirect()->back()->withErrors(['time' => 'Lecturer ' . $lecturer->name . ' already has another class at this time.'])->withInput();
+            }
+        }
 
         $schedule->update($validated);
 

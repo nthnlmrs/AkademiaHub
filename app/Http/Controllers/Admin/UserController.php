@@ -45,7 +45,7 @@ class UserController extends Controller
             'password' => ['required', 'string', 'min:8'],
             'role' => ['required', Rule::in(['admin_lab', 'lecturer', 'student'])],
             'student_type' => ['required_if:role,student', Rule::in(['regular', 'teaching_assistant'])],
-            'nim_nip' => ['required', 'string', 'max:50'],
+            'nim_nip' => ['required', 'string', 'max:50', 'unique:users,nim_nip'],
         ]);
 
         if ($validated['role'] !== 'student') {
@@ -81,7 +81,7 @@ class UserController extends Controller
             'email' => ['required', 'string', 'email', 'max:255', Rule::unique('users')->ignore($user->id)],
             'role' => ['required', Rule::in(['admin_lab', 'lecturer', 'student'])],
             'student_type' => ['required_if:role,student', Rule::in(['regular', 'teaching_assistant'])],
-            'nim_nip' => ['required', 'string', 'max:50'],
+            'nim_nip' => ['required', 'string', 'max:50', Rule::unique('users', 'nim_nip')->ignore($user->id)],
         ]);
 
         if ($validated['role'] !== 'student') {

@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\ClassRoom;
 use App\Models\Course;
 use App\Models\User;
+use App\Rules\UserHasRole;
+use App\Rules\UserHasStudentType;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -39,9 +41,12 @@ class ClassRoomController extends Controller
     {
         $courses = Course::orderBy('name')->get();
         $lecturers = User::where('role', 'lecturer')->orderBy('name')->get();
-        $students = User::where('role', 'student')->orderBy('name')->get();
+        $teachingAssistants = User::where('role', 'student')
+            ->where('student_type', 'teaching_assistant')
+            ->orderBy('name')->get();
+        $students = User::where('role', 'student')->where('student_type', 'regular')->orderBy('name')->get();
 
-        return view('admin.classrooms.create', compact('courses', 'lecturers', 'students'));
+        return view('admin.classrooms.create', compact('courses', 'lecturers', 'teachingAssistants', 'students'));
     }
 
     public function store(Request $request)
@@ -53,9 +58,11 @@ class ClassRoomController extends Controller
             'mode' => ['required', Rule::in(['onsite', 'online'])],
             'room' => ['nullable', 'string', 'max:50'],
             'lecturers' => ['nullable', 'array'],
-            'lecturers.*' => ['exists:users,id'],
+            'lecturers.*' => ['exists:users,id', new UserHasRole('lecturer')],
+            'teaching_assistants' => ['nullable', 'array'],
+            'teaching_assistants.*' => ['exists:users,id', new UserHasStudentType('teaching_assistant')],
             'students' => ['nullable', 'array'],
-            'students.*' => ['exists:users,id'],
+            'students.*' => ['exists:users,id', new UserHasStudentType('regular')],
         ]);
 
         $classRoom = ClassRoom::create([
@@ -66,8 +73,12 @@ class ClassRoomController extends Controller
             'room' => $validated['room'] ?? null,
         ]);
 
-        // Attach lecturers and students
-        $members = array_merge($validated['lecturers'] ?? [], $validated['students'] ?? []);
+        // Attach lecturers, tas, and students
+        $members = array_merge(
+            $validated['lecturers'] ?? [],
+            $validated['teaching_assistants'] ?? [],
+            $validated['students'] ?? []
+        );
         $classRoom->users()->sync($members);
 
         return redirect()->route('admin.classrooms.index')
@@ -76,7 +87,7 @@ class ClassRoomController extends Controller
 
     public function edit(ClassRoom $classroom)
     {
-        $classroom->load(['course', 'users']);
+        $classroom->load(['course', 'lecturers', 'students']);
         $courses = Course::orderBy('name')->get();
         $lecturers = User::where('role', 'lecturer')->orderBy('name')->get();
         $students = User::where('role', 'student')->orderBy('name')->get();
@@ -96,9 +107,11 @@ class ClassRoomController extends Controller
             'mode' => ['required', Rule::in(['onsite', 'online'])],
             'room' => ['nullable', 'string', 'max:50'],
             'lecturers' => ['nullable', 'array'],
-            'lecturers.*' => ['exists:users,id'],
+            'lecturers.*' => ['exists:users,id', new UserHasRole('lecturer')],
+            'teaching_assistants' => ['nullable', 'array'],
+            'teaching_assistants.*' => ['exists:users,id', new UserHasStudentType('teaching_assistant')],
             'students' => ['nullable', 'array'],
-            'students.*' => ['exists:users,id'],
+            'students.*' => ['exists:users,id', new UserHasStudentType('regular')],
         ]);
 
         $classroom->update([
@@ -109,8 +122,31 @@ class ClassRoomController extends Controller
             'room' => $validated['room'] ?? null,
         ]);
 
-        $members = array_merge($validated['lecturers'] ?? [], $validated['students'] ?? []);
-        $classroom->users()->sync($members);
+        // When a request might not contain fields for certain roles, we shouldn't wipe them entirely if the form didn't support them.
+        // But since we added TA to the validation, if we pass all 3 fields, we can safely sync them.
+        // To be safe, if a field is not present in the request at all (not just empty, but missing), we keep existing ones for that role.
+        $membersToSync = [];
+        if ($request->has('lecturers')) {
+            $membersToSync = array_merge($membersToSync, $validated['lecturers'] ?? []);
+        } else {
+            $membersToSync = array_merge($membersToSync, $classroom->lecturers()->pluck('users.id')->toArray());
+        }
+
+        if ($request->has('teaching_assistants')) {
+            $membersToSync = array_merge($membersToSync, $validated['teaching_assistants'] ?? []);
+        } else {
+            $membersToSync = array_merge($membersToSync, $classroom->teachingAssistants()->pluck('users.id')->toArray());
+        }
+
+        if ($request->has('students')) {
+            $membersToSync = array_merge($membersToSync, $validated['students'] ?? []);
+        } else {
+            // get only regular students
+            $regularStudents = $classroom->students()->where('student_type', 'regular')->pluck('users.id')->toArray();
+            $membersToSync = array_merge($membersToSync, $regularStudents);
+        }
+
+        $classroom->users()->sync($membersToSync);
 
         return redirect()->route('admin.classrooms.index')
             ->with('success', 'Class updated successfully.');

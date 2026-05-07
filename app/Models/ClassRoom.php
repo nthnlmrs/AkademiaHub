@@ -38,11 +38,6 @@ class ClassRoom extends Model
         return $this->hasMany(Schedule::class);
     }
 
-    public function courseSessions()
-    {
-        return $this->hasMany(CourseSession::class)->orderBy('session_number');
-    }
-
     public function forumPosts()
     {
         return $this->hasMany(ForumPost::class)->whereNull('parent_id');
@@ -60,6 +55,8 @@ class ClassRoom extends Model
 
     public function getFullNameAttribute(): string
     {
-        return $this->course->name . ' - Class ' . $this->name . ' (' . $this->type . ')';
+        // Use relationLoaded to prevent N+1 query if course isn't loaded
+        $courseName = $this->relationLoaded('course') && $this->course ? $this->course->name : 'Course ' . $this->course_id;
+        return $courseName . ' - Class ' . $this->name . ' (' . $this->type . ')';
     }
 }

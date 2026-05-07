@@ -24,9 +24,14 @@ class ClassDetailController extends Controller
         ]);
 
         $sessions = $classroom->course->courseSessions;
-        $activeSession = $sessions->first(); // Default to first session
 
-        if ($activeSession) {
+        // Find the most recent session that has modules or activities, or default to the first one
+        $activeSession = null;
+        if ($sessions->isNotEmpty()) {
+            $activeSession = $sessions->last(function ($session) {
+                return $session->modules()->exists() || $session->activities()->exists() || $session->quizzes()->exists();
+            }) ?? $sessions->first();
+
             $activeSession->load(['activities', 'modules', 'quizzes.questions']);
         }
 

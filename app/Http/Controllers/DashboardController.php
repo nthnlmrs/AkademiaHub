@@ -66,8 +66,37 @@ class DashboardController extends Controller
 
         $recentNotifications = $user->notifications()->latest()->take(3)->get();
         
-        $gpa = $user->grades()->avg('score'); // Simple average for now
-        $totalCredits = $classRooms->count() * 3; // Assuming 3 credits per class as fallback
+        // Calculate GPA properly using credits and rubrics
+        $classRoomsWithGrades = $user->classRooms()->with(['course.rubrics', 'grades' => function($q) use ($user) {
+            $q->where('user_id', $user->id);
+        }])->get();
+
+        $totalCredits = 0;
+        $totalPoints = 0;
+
+        foreach ($classRoomsWithGrades as $classroom) {
+            $credits = $classroom->course->credits;
+            $rubrics = $classroom->course->rubrics;
+
+            $classScore = 0;
+            foreach ($classroom->grades as $grade) {
+                $rubric = $rubrics->firstWhere('id', $grade->grade_rubric_id);
+                if ($rubric) {
+                    $classScore += ($grade->percentage * ($rubric->weight / 100));
+                }
+            }
+
+            $index = 0;
+            if ($classScore >= 85) $index = 4;
+            elseif ($classScore >= 70) $index = 3;
+            elseif ($classScore >= 55) $index = 2;
+            elseif ($classScore >= 40) $index = 1;
+
+            $totalPoints += ($index * $credits);
+            $totalCredits += $credits;
+        }
+
+        $gpa = $totalCredits > 0 ? round($totalPoints / $totalCredits, 2) : 0;
 
         return view('dashboard.user', compact(
             'classRooms', 
