@@ -10,7 +10,7 @@ use Illuminate\Validation\Rule;
 class TAController extends Controller
 {
     /**
-     * List all students - show who is TA and who is regular.
+     * List all students – show who is TA and who is regular.
      */
     public function index(Request $request)
     {
@@ -40,9 +40,7 @@ class TAController extends Controller
      */
     public function promote(User $user)
     {
-        if (!$user->isStudent()) {
-            abort(403, 'Only students can be promoted to Teaching Assistant.');
-        }
+        $this->abortUnlessStudent($user);
 
         if ($user->isTeachingAssistant()) {
             return redirect()->route('admin_lab.ta.index')
@@ -53,21 +51,17 @@ class TAController extends Controller
     }
 
     /**
-     * Execute the promotion - switch student to TA with TA ID.
+     * Execute the promotion – switch student to TA with TA ID.
      */
     public function executePromotion(Request $request, User $user)
     {
-        if (!$user->isStudent()) {
-            abort(403, 'Only students can be promoted to Teaching Assistant.');
-        }
+        $this->abortUnlessStudent($user);
 
-        $validated = $request->validate([
-            'ta_id' => ['required', 'string', 'max:20', Rule::unique('users', 'ta_id')->ignore($user->id)],
-        ]);
+        $validated = $request->validate($this->taIdRules($user->id));
 
         $user->update([
             'student_type' => 'teaching_assistant',
-            'ta_id' => $validated['ta_id'],
+            'ta_id'        => $validated['ta_id'],
         ]);
 
         return redirect()->route('admin_lab.ta.index')
@@ -79,14 +73,9 @@ class TAController extends Controller
      */
     public function demote(User $user)
     {
-        if (!$user->isTeachingAssistant()) {
-            abort(403, 'This user is not a Teaching Assistant.');
-        }
+        $this->abortUnlessTA($user);
 
-        $user->update([
-            'student_type' => 'regular',
-            'ta_id' => null,
-        ]);
+        $user->update(['student_type' => 'regular', 'ta_id' => null]);
 
         return redirect()->route('admin_lab.ta.index')
             ->with('success', $user->name . ' has been demoted to Regular Student.');
@@ -97,9 +86,7 @@ class TAController extends Controller
      */
     public function editTaId(User $user)
     {
-        if (!$user->isTeachingAssistant()) {
-            abort(403, 'This user is not a Teaching Assistant.');
-        }
+        $this->abortUnlessTA($user);
 
         return view('admin_lab.ta.edit_ta_id', compact('user'));
     }
@@ -109,17 +96,41 @@ class TAController extends Controller
      */
     public function updateTaId(Request $request, User $user)
     {
-        if (!$user->isTeachingAssistant()) {
-            abort(403);
-        }
+        $this->abortUnlessTA($user);
 
-        $validated = $request->validate([
-            'ta_id' => ['required', 'string', 'max:20', Rule::unique('users', 'ta_id')->ignore($user->id)],
-        ]);
+        $validated = $request->validate($this->taIdRules($user->id));
 
         $user->update(['ta_id' => $validated['ta_id']]);
 
         return redirect()->route('admin_lab.ta.index')
             ->with('success', 'TA ID updated to ' . $validated['ta_id']);
+    }
+
+    // -------------------------------------------------------------------------
+    // Private helpers
+    // -------------------------------------------------------------------------
+
+    /** Abort 403 if the user is not a student. */
+    private function abortUnlessStudent(User $user): void
+    {
+        if (!$user->isStudent()) {
+            abort(403, 'Only students can be promoted to Teaching Assistant.');
+        }
+    }
+
+    /** Abort 403 if the user is not a Teaching Assistant. */
+    private function abortUnlessTA(User $user): void
+    {
+        if (!$user->isTeachingAssistant()) {
+            abort(403, 'This user is not a Teaching Assistant.');
+        }
+    }
+
+    /** Shared validation rules for ta_id field (with unique-ignore for current user). */
+    private function taIdRules(int $userId): array
+    {
+        return [
+            'ta_id' => ['required', 'string', 'max:20', Rule::unique('users', 'ta_id')->ignore($userId)],
+        ];
     }
 }

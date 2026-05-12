@@ -3,16 +3,17 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Concerns\SyncsClassroomMembers;
 use App\Models\ClassRoom;
 use App\Models\Course;
 use App\Models\User;
-use App\Rules\UserHasRole;
-use App\Rules\UserHasStudentType;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
 class ClassRoomController extends Controller
 {
+    use SyncsClassroomMembers;
+
     public function index(Request $request)
     {
         $query = ClassRoom::with(['course', 'lecturers', 'students']);
@@ -39,47 +40,28 @@ class ClassRoomController extends Controller
 
     public function create()
     {
-        $courses = Course::orderBy('name')->get();
-        $lecturers = User::where('role', 'lecturer')->orderBy('name')->get();
-        $teachingAssistants = User::where('role', 'student')
-            ->where('student_type', 'teaching_assistant')
-            ->orderBy('name')->get();
-        $students = User::where('role', 'student')->where('student_type', 'regular')->orderBy('name')->get();
+        [$courses, $lecturers, $teachingAssistants, $students] = $this->getFormDependencies();
 
         return view('admin.classrooms.create', compact('courses', 'lecturers', 'teachingAssistants', 'students'));
     }
 
     public function store(Request $request)
     {
-        $validated = $request->validate([
-            'course_id' => ['required', 'exists:courses,id'],
-            'name' => ['required', 'string', 'max:10'],
-            'type' => ['required', Rule::in(['LEC', 'LAB'])],
-            'mode' => ['required', Rule::in(['onsite', 'online'])],
-            'room' => ['nullable', 'string', 'max:50'],
-            'lecturers' => ['nullable', 'array'],
-            'lecturers.*' => ['exists:users,id', new UserHasRole('lecturer')],
-            'teaching_assistants' => ['nullable', 'array'],
-            'teaching_assistants.*' => ['exists:users,id', new UserHasStudentType('teaching_assistant')],
-            'students' => ['nullable', 'array'],
-            'students.*' => ['exists:users,id', new UserHasStudentType('regular')],
-        ]);
+        $validated = $request->validate(array_merge(
+            $this->classroomBaseRules(),
+            ['type' => ['required', Rule::in(['LEC', 'LAB'])]],
+            $this->classroomMemberRules()
+        ));
 
         $classRoom = ClassRoom::create([
             'course_id' => $validated['course_id'],
-            'name' => $validated['name'],
-            'type' => $validated['type'],
-            'mode' => $validated['mode'],
-            'room' => $validated['room'] ?? null,
+            'name'      => $validated['name'],
+            'type'      => $validated['type'],
+            'mode'      => $validated['mode'],
+            'room'      => $validated['room'] ?? null,
         ]);
 
-        // Attach lecturers, tas, and students
-        $members = array_merge(
-            $validated['lecturers'] ?? [],
-            $validated['teaching_assistants'] ?? [],
-            $validated['students'] ?? []
-        );
-        $classRoom->users()->sync($members);
+        $classRoom->users()->sync($this->buildMembersFromValidated($validated));
 
         return redirect()->route('admin.classrooms.index')
             ->with('success', 'Class created successfully.');
@@ -88,65 +70,33 @@ class ClassRoomController extends Controller
     public function edit(ClassRoom $classroom)
     {
         $classroom->load(['course', 'lecturers', 'students']);
-        $courses = Course::orderBy('name')->get();
+        $courses  = Course::orderBy('name')->get();
         $lecturers = User::where('role', 'lecturer')->orderBy('name')->get();
-        $students = User::where('role', 'student')->orderBy('name')->get();
+        $students  = User::where('role', 'student')->orderBy('name')->get();
 
         $selectedLecturers = $classroom->lecturers->pluck('id')->toArray();
-        $selectedStudents = $classroom->students->pluck('id')->toArray();
+        $selectedStudents  = $classroom->students->pluck('id')->toArray();
 
         return view('admin.classrooms.edit', compact('classroom', 'courses', 'lecturers', 'students', 'selectedLecturers', 'selectedStudents'));
     }
 
     public function update(Request $request, ClassRoom $classroom)
     {
-        $validated = $request->validate([
-            'course_id' => ['required', 'exists:courses,id'],
-            'name' => ['required', 'string', 'max:10'],
-            'type' => ['required', Rule::in(['LEC', 'LAB'])],
-            'mode' => ['required', Rule::in(['onsite', 'online'])],
-            'room' => ['nullable', 'string', 'max:50'],
-            'lecturers' => ['nullable', 'array'],
-            'lecturers.*' => ['exists:users,id', new UserHasRole('lecturer')],
-            'teaching_assistants' => ['nullable', 'array'],
-            'teaching_assistants.*' => ['exists:users,id', new UserHasStudentType('teaching_assistant')],
-            'students' => ['nullable', 'array'],
-            'students.*' => ['exists:users,id', new UserHasStudentType('regular')],
-        ]);
+        $validated = $request->validate(array_merge(
+            $this->classroomBaseRules(),
+            ['type' => ['required', Rule::in(['LEC', 'LAB'])]],
+            $this->classroomMemberRules()
+        ));
 
         $classroom->update([
             'course_id' => $validated['course_id'],
-            'name' => $validated['name'],
-            'type' => $validated['type'],
-            'mode' => $validated['mode'],
-            'room' => $validated['room'] ?? null,
+            'name'      => $validated['name'],
+            'type'      => $validated['type'],
+            'mode'      => $validated['mode'],
+            'room'      => $validated['room'] ?? null,
         ]);
 
-        // When a request might not contain fields for certain roles, we shouldn't wipe them entirely if the form didn't support them.
-        // But since we added TA to the validation, if we pass all 3 fields, we can safely sync them.
-        // To be safe, if a field is not present in the request at all (not just empty, but missing), we keep existing ones for that role.
-        $membersToSync = [];
-        if ($request->has('lecturers')) {
-            $membersToSync = array_merge($membersToSync, $validated['lecturers'] ?? []);
-        } else {
-            $membersToSync = array_merge($membersToSync, $classroom->lecturers()->pluck('users.id')->toArray());
-        }
-
-        if ($request->has('teaching_assistants')) {
-            $membersToSync = array_merge($membersToSync, $validated['teaching_assistants'] ?? []);
-        } else {
-            $membersToSync = array_merge($membersToSync, $classroom->teachingAssistants()->pluck('users.id')->toArray());
-        }
-
-        if ($request->has('students')) {
-            $membersToSync = array_merge($membersToSync, $validated['students'] ?? []);
-        } else {
-            // get only regular students
-            $regularStudents = $classroom->students()->where('student_type', 'regular')->pluck('users.id')->toArray();
-            $membersToSync = array_merge($membersToSync, $regularStudents);
-        }
-
-        $classroom->users()->sync($membersToSync);
+        $classroom->users()->sync($this->buildMembersForUpdate($request, $validated, $classroom));
 
         return redirect()->route('admin.classrooms.index')
             ->with('success', 'Class updated successfully.');
@@ -158,5 +108,31 @@ class ClassRoomController extends Controller
 
         return redirect()->route('admin.classrooms.index')
             ->with('success', 'Class deleted successfully.');
+    }
+
+    // -------------------------------------------------------------------------
+    // Private helpers
+    // -------------------------------------------------------------------------
+
+    /** Common validation rules for the classroom fields (minus 'type'). */
+    private function classroomBaseRules(): array
+    {
+        return [
+            'course_id' => ['required', 'exists:courses,id'],
+            'name'      => ['required', 'string', 'max:10'],
+            'mode'      => ['required', Rule::in(['onsite', 'online'])],
+            'room'      => ['nullable', 'string', 'max:50'],
+        ];
+    }
+
+    /** Fetch all dropdown data needed by the create/edit forms. */
+    private function getFormDependencies(): array
+    {
+        return [
+            Course::orderBy('name')->get(),
+            User::where('role', 'lecturer')->orderBy('name')->get(),
+            User::where('role', 'student')->where('student_type', 'teaching_assistant')->orderBy('name')->get(),
+            User::where('role', 'student')->where('student_type', 'regular')->orderBy('name')->get(),
+        ];
     }
 }

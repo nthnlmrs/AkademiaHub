@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\ClassRoom;
 use App\Models\CourseSession;
-use App\Models\SessionActivity;
 use Illuminate\Http\Request;
 
 class SessionController extends Controller
@@ -24,11 +23,7 @@ class SessionController extends Controller
 
     public function store(Request $request, ClassRoom $classroom)
     {
-        $validated = $request->validate([
-            'session_number' => ['required', 'integer', 'min:1'],
-            'title' => ['required', 'string', 'max:255'],
-            'description' => ['nullable', 'string'],
-        ]);
+        $validated = $request->validate($this->sessionRules());
 
         $classroom->courseSessions()->create($validated);
 
@@ -43,11 +38,7 @@ class SessionController extends Controller
 
     public function update(Request $request, ClassRoom $classroom, CourseSession $session)
     {
-        $validated = $request->validate([
-            'session_number' => ['required', 'integer', 'min:1'],
-            'title' => ['required', 'string', 'max:255'],
-            'description' => ['nullable', 'string'],
-        ]);
+        $validated = $request->validate($this->sessionRules());
 
         $session->update($validated);
 
@@ -66,21 +57,20 @@ class SessionController extends Controller
     public function storeActivity(Request $request, CourseSession $session)
     {
         $validated = $request->validate([
-            'type' => ['required', 'string', 'in:video,file,link'],
-            'title' => ['required', 'string', 'max:255'],
-            'url' => ['nullable', 'string', 'max:255'],
+            'type'     => ['required', 'string', 'in:video,file,link'],
+            'title'    => ['required', 'string', 'max:255'],
+            'url'      => ['nullable', 'string', 'max:255'],
             'document' => ['nullable', 'file', 'mimes:pdf,doc,docx,ppt,pptx,xls,xlsx,zip', 'max:20480'],
         ]);
 
         $data = [
-            'type' => $validated['type'],
+            'type'  => $validated['type'],
             'title' => $validated['title'],
         ];
 
         if ($validated['type'] === 'file') {
             if ($request->hasFile('document')) {
-                $path = $request->file('document')->store('session-documents', 'public');
-                $data['file_path'] = $path;
+                $data['file_path'] = $request->file('document')->store('session-documents', 'public');
             }
         } else {
             $url = $validated['url'] ?? null;
@@ -93,5 +83,19 @@ class SessionController extends Controller
         $session->activities()->create($data);
 
         return back()->with('success', 'Activity added successfully!');
+    }
+
+    // -------------------------------------------------------------------------
+    // Private helpers
+    // -------------------------------------------------------------------------
+
+    /** Shared validation rules for session store/update. */
+    private function sessionRules(): array
+    {
+        return [
+            'session_number' => ['required', 'integer', 'min:1'],
+            'title'          => ['required', 'string', 'max:255'],
+            'description'    => ['nullable', 'string'],
+        ];
     }
 }

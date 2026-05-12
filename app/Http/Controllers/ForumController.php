@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\AuthorizesClassroom;
 use App\Models\ClassRoom;
 use App\Models\ForumPost;
 use Illuminate\Http\Request;
@@ -9,13 +10,11 @@ use Illuminate\Support\Facades\Auth;
 
 class ForumController extends Controller
 {
+    use AuthorizesClassroom;
+
     public function index(ClassRoom $classroom)
     {
-        $user = Auth::user();
-
-        if (!$user->isAdmin() && !$classroom->users->contains($user->id)) {
-            abort(403, 'You are not enrolled in this class.');
-        }
+        $this->authorizeClassroomAccess($classroom, 'You are not enrolled in this class.');
 
         $classroom->load('course');
         $posts = ForumPost::where('class_room_id', $classroom->id)
@@ -29,11 +28,7 @@ class ForumController extends Controller
 
     public function create(ClassRoom $classroom)
     {
-        $user = Auth::user();
-
-        if (!$user->isAdmin() && !$classroom->users->contains($user->id)) {
-            abort(403);
-        }
+        $this->authorizeClassroomAccess($classroom);
 
         $classroom->load(['course.courseSessions']);
         $sessions = $classroom->course->courseSessions;
@@ -43,17 +38,13 @@ class ForumController extends Controller
 
     public function store(Request $request, ClassRoom $classroom)
     {
-        $user = Auth::user();
-
-        if (!$user->isAdmin() && !$classroom->users->contains($user->id)) {
-            abort(403);
-        }
+        $this->authorizeClassroomAccess($classroom);
 
         $validated = $request->validate([
-            'title' => ['required_without:parent_id', 'nullable', 'string', 'max:255'],
-            'body' => ['required', 'string'],
+            'title'             => ['required_without:parent_id', 'nullable', 'string', 'max:255'],
+            'body'              => ['required', 'string'],
             'course_session_id' => ['required', 'exists:course_sessions,id'],
-            'parent_id' => ['nullable', 'exists:forum_posts,id'],
+            'parent_id'         => ['nullable', 'exists:forum_posts,id'],
         ]);
 
         $session = \App\Models\CourseSession::find($validated['course_session_id']);
@@ -68,13 +59,13 @@ class ForumController extends Controller
             }
         }
 
-        $post = ForumPost::create([
-            'class_room_id' => $classroom->id,
+        ForumPost::create([
+            'class_room_id'     => $classroom->id,
             'course_session_id' => $validated['course_session_id'],
-            'user_id' => $user->id,
-            'parent_id' => $validated['parent_id'] ?? null,
-            'title' => $validated['title'] ?? null,
-            'body' => $validated['body'],
+            'user_id'           => Auth::id(),
+            'parent_id'         => $validated['parent_id'] ?? null,
+            'title'             => $validated['title'] ?? null,
+            'body'              => $validated['body'],
         ]);
 
         if (isset($validated['parent_id'])) {
@@ -88,7 +79,7 @@ class ForumController extends Controller
     {
         $user = Auth::user();
 
-        // Check if user is admin, owner of the post, or a lecturer of the classroom
+        // Admin, owner of the post, or a lecturer of the classroom may delete
         if (!$user->isAdmin() && $post->user_id !== $user->id && !$user->can('manage', $post->classRoom)) {
             abort(403, 'Unauthorized to delete this post.');
         }

@@ -4,7 +4,9 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Course;
+use App\Models\CourseSession;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class CourseController extends Controller
 {
@@ -29,14 +31,10 @@ class CourseController extends Controller
     {
         return view('admin.courses.create');
     }
+
     public function store(Request $request)
     {
-        $validated = $request->validate([
-            'code' => ['required', 'string', 'max:20', 'unique:courses'],
-            'name' => ['required', 'string', 'max:255'],
-            'credits' => ['required', 'integer', 'min:1'],
-            'description' => ['nullable', 'string'],
-        ]);
+        $validated = $request->validate($this->courseRules());
 
         Course::create($validated);
 
@@ -52,45 +50,29 @@ class CourseController extends Controller
 
     public function storeSession(Request $request, Course $course)
     {
-        $request->validate([
-            'session_number' => [
-                'required', 
-                'integer', 
-                \Illuminate\Validation\Rule::unique('course_sessions')->where(fn ($q) => $q->where('course_id', $course->id))
-            ],
-            'title' => ['required', 'string', 'max:255'],
-            'description' => ['nullable', 'string'],
-        ], [
-            'session_number.unique' => 'Session number ' . $request->session_number . ' already exists in this course.'
-        ]);
+        $request->validate(
+            $this->sessionRules($course),
+            $this->sessionMessages($request->session_number)
+        );
 
         $course->courseSessions()->create($request->only(['session_number', 'title', 'description']));
 
         return redirect()->back()->with('success', 'Session added successfully.');
     }
 
-    public function updateSession(Request $request, Course $course, \App\Models\CourseSession $session)
+    public function updateSession(Request $request, Course $course, CourseSession $session)
     {
-        $request->validate([
-            'session_number' => [
-                'required', 
-                'integer', 
-                \Illuminate\Validation\Rule::unique('course_sessions')
-                    ->where(fn ($q) => $q->where('course_id', $course->id))
-                    ->ignore($session->id)
-            ],
-            'title' => ['required', 'string', 'max:255'],
-            'description' => ['nullable', 'string'],
-        ], [
-            'session_number.unique' => 'Session number ' . $request->session_number . ' already exists in this course.'
-        ]);
+        $request->validate(
+            $this->sessionRules($course, $session->id),
+            $this->sessionMessages($request->session_number)
+        );
 
         $session->update($request->only(['session_number', 'title', 'description']));
 
         return redirect()->route('admin.courses.show', $course)->with('success', 'Session updated successfully.');
     }
 
-    public function destroySession(Course $course, \App\Models\CourseSession $session)
+    public function destroySession(Course $course, CourseSession $session)
     {
         $session->delete();
         return redirect()->back()->with('success', 'Session deleted successfully.');
@@ -103,12 +85,7 @@ class CourseController extends Controller
 
     public function update(Request $request, Course $course)
     {
-        $validated = $request->validate([
-            'code' => ['required', 'string', 'max:20', 'unique:courses,code,' . $course->id],
-            'name' => ['required', 'string', 'max:255'],
-            'credits' => ['required', 'integer', 'min:1'],
-            'description' => ['nullable', 'string'],
-        ]);
+        $validated = $request->validate($this->courseRules($course->id));
 
         $course->update($validated);
 
@@ -122,5 +99,50 @@ class CourseController extends Controller
 
         return redirect()->route('admin.courses.index')
             ->with('success', 'Course deleted successfully.');
+    }
+
+    // -------------------------------------------------------------------------
+    // Private helpers
+    // -------------------------------------------------------------------------
+
+    /**
+     * Validation rules for Course store/update.
+     * Pass $ignoreId to ignore the current course on unique checks (update).
+     */
+    private function courseRules(?int $ignoreId = null): array
+    {
+        return [
+            'code'        => ['required', 'string', 'max:20', Rule::unique('courses', 'code')->ignore($ignoreId)],
+            'name'        => ['required', 'string', 'max:255'],
+            'credits'     => ['required', 'integer', 'min:1'],
+            'description' => ['nullable', 'string'],
+        ];
+    }
+
+    /**
+     * Validation rules for CourseSession store/update.
+     * Pass $ignoreId to ignore an existing session on unique checks (update).
+     */
+    private function sessionRules(Course $course, ?int $ignoreId = null): array
+    {
+        return [
+            'session_number' => [
+                'required',
+                'integer',
+                Rule::unique('course_sessions')
+                    ->where(fn($q) => $q->where('course_id', $course->id))
+                    ->ignore($ignoreId),
+            ],
+            'title'       => ['required', 'string', 'max:255'],
+            'description' => ['nullable', 'string'],
+        ];
+    }
+
+    /** Custom validation messages for session_number uniqueness. */
+    private function sessionMessages(mixed $sessionNumber): array
+    {
+        return [
+            'session_number.unique' => 'Session number ' . $sessionNumber . ' already exists in this course.',
+        ];
     }
 }

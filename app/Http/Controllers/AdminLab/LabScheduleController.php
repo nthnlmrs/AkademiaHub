@@ -5,97 +5,47 @@ namespace App\Http\Controllers\AdminLab;
 use App\Http\Controllers\Controller;
 use App\Models\ClassRoom;
 use App\Models\Schedule;
-use App\Models\User;
+use App\Services\ScheduleConflictService;
 use Illuminate\Http\Request;
 
 class LabScheduleController extends Controller
 {
+    public function __construct(private ScheduleConflictService $conflicts) {}
+
     public function index(Request $request)
     {
-        $query = Schedule::whereHas('classRoom', function ($q) {
-            $q->where('type', 'LAB');
-        })->with(['classRoom.course', 'classRoom.lecturers', 'classRoom.teachingAssistants']);
+        $query = Schedule::whereHas('classRoom', fn($q) => $q->where('type', 'LAB'))
+            ->with(['classRoom.course', 'classRoom.lecturers', 'classRoom.teachingAssistants']);
 
         if ($request->filled('day')) {
             $query->where('day_of_week', $request->day);
         }
 
-        $schedules = $query->orderBy('day_of_week')->orderBy('start_time')->paginate(20);
-        $labClasses = ClassRoom::where('type', 'LAB')->with('course')->orderBy('course_id')->get();
+        $schedules  = $query->orderBy('day_of_week')->orderBy('start_time')->paginate(20);
+        $labClasses = $this->getLabClassesForForm();
 
         return view('admin_lab.schedules.index', compact('schedules', 'labClasses'));
     }
 
     public function create()
     {
-        $labClasses = ClassRoom::where('type', 'LAB')->with('course')->orderBy('course_id')->get();
+        $labClasses = $this->getLabClassesForForm();
         return view('admin_lab.schedules.create', compact('labClasses'));
     }
 
     public function store(Request $request)
     {
-        $validated = $request->validate([
-            'class_room_id' => ['required', 'exists:class_rooms,id'],
-            'day_of_week' => ['required', 'integer', 'min:0', 'max:6'],
-            'start_time' => ['required', 'date_format:H:i'],
-            'end_time' => ['required', 'date_format:H:i', 'after:start_time'],
-            'room' => ['nullable', 'string', 'max:50'],
-        ]);
-
-        // Verify this is a LAB class
+        $validated = $request->validate($this->scheduleValidationRules());
         $classRoom = ClassRoom::findOrFail($validated['class_room_id']);
+
         if ($classRoom->type !== 'LAB') {
-            return redirect()->back()->withErrors(['class_room_id' => 'Only LAB classes can be managed here.'])->withInput();
-        }
-
-        // Check Room Conflict
-        if (!empty($validated['room'])) {
-            $roomConflict = Schedule::where('room', $validated['room'])
-                ->where('day_of_week', $validated['day_of_week'])
-                ->where('start_time', '<', $validated['end_time'])
-                ->where('end_time', '>', $validated['start_time'])
-                ->exists();
-
-            if ($roomConflict) {
-                return redirect()->back()->withErrors(['room' => 'The room is already booked for the given time.'])->withInput();
-            }
-        }
-
-        // Check Lecturer Conflict (since TAs might be lecturing or regular lecturers)
-        foreach ($classRoom->lecturers as $lecturer) {
-            $lecturerConflict = Schedule::whereHas('classRoom.users', function($q) use ($lecturer) {
-                    $q->where('users.id', $lecturer->id);
-                })
-                ->where('day_of_week', $validated['day_of_week'])
-                ->where('start_time', '<', $validated['end_time'])
-                ->where('end_time', '>', $validated['start_time'])
-                ->exists();
-
-            if ($lecturerConflict) {
-                return redirect()->back()->withErrors(['time' => 'Lecturer ' . $lecturer->name . ' already has another class at this time.'])->withInput();
-            }
-        }
-
-        // Check schedule conflicts for all enrolled students in this class
-        $conflicts = $this->checkScheduleConflicts(
-            $classRoom,
-            $validated['day_of_week'],
-            $validated['start_time'],
-            $validated['end_time'],
-            null // no schedule to exclude
-        );
-
-        if ($conflicts->isNotEmpty()) {
-            $conflictMessages = $conflicts->map(function ($c) {
-                return $c['user']->name . ' (' . ($c['user']->ta_id ?? $c['user']->nim_nip) . ') has conflict with "' .
-                    $c['schedule']->classRoom->course->name . ' Class ' . $c['schedule']->classRoom->name .
-                    '" at ' . $c['schedule']->start_time . '-' . $c['schedule']->end_time;
-            });
-
             return redirect()->back()
-                ->withErrors(['conflicts' => 'Schedule conflicts detected:'])
-                ->with('conflict_details', $conflictMessages->toArray())
+                ->withErrors(['class_room_id' => 'Only LAB classes can be managed here.'])
                 ->withInput();
+        }
+
+        if ($error = $this->detectConflict($validated, $classRoom, null)) {
+            return $error;
         }
 
         Schedule::create($validated);
@@ -106,75 +56,23 @@ class LabScheduleController extends Controller
 
     public function edit(Schedule $schedule)
     {
-        $labClasses = ClassRoom::where('type', 'LAB')->with('course')->orderBy('course_id')->get();
+        $labClasses = $this->getLabClassesForForm();
         return view('admin_lab.schedules.edit', compact('schedule', 'labClasses'));
     }
 
     public function update(Request $request, Schedule $schedule)
     {
-        $validated = $request->validate([
-            'class_room_id' => ['required', 'exists:class_rooms,id'],
-            'day_of_week' => ['required', 'integer', 'min:0', 'max:6'],
-            'start_time' => ['required', 'date_format:H:i'],
-            'end_time' => ['required', 'date_format:H:i', 'after:start_time'],
-            'room' => ['nullable', 'string', 'max:50'],
-        ]);
-
+        $validated = $request->validate($this->scheduleValidationRules());
         $classRoom = ClassRoom::findOrFail($validated['class_room_id']);
+
         if ($classRoom->type !== 'LAB') {
-            return redirect()->back()->withErrors(['class_room_id' => 'Only LAB classes can be managed here.'])->withInput();
-        }
-
-        // Check Room Conflict
-        if (!empty($validated['room'])) {
-            $roomConflict = Schedule::where('room', $validated['room'])
-                ->where('id', '!=', $schedule->id)
-                ->where('day_of_week', $validated['day_of_week'])
-                ->where('start_time', '<', $validated['end_time'])
-                ->where('end_time', '>', $validated['start_time'])
-                ->exists();
-
-            if ($roomConflict) {
-                return redirect()->back()->withErrors(['room' => 'The room is already booked for the given time.'])->withInput();
-            }
-        }
-
-        // Check Lecturer Conflict (since TAs might be lecturing or regular lecturers)
-        foreach ($classRoom->lecturers as $lecturer) {
-            $lecturerConflict = Schedule::whereHas('classRoom.users', function($q) use ($lecturer) {
-                    $q->where('users.id', $lecturer->id);
-                })
-                ->where('id', '!=', $schedule->id)
-                ->where('day_of_week', $validated['day_of_week'])
-                ->where('start_time', '<', $validated['end_time'])
-                ->where('end_time', '>', $validated['start_time'])
-                ->exists();
-
-            if ($lecturerConflict) {
-                return redirect()->back()->withErrors(['time' => 'Lecturer ' . $lecturer->name . ' already has another class at this time.'])->withInput();
-            }
-        }
-
-        // Check conflicts excluding the current schedule
-        $conflicts = $this->checkScheduleConflicts(
-            $classRoom,
-            $validated['day_of_week'],
-            $validated['start_time'],
-            $validated['end_time'],
-            $schedule->id
-        );
-
-        if ($conflicts->isNotEmpty()) {
-            $conflictMessages = $conflicts->map(function ($c) {
-                return $c['user']->name . ' (' . ($c['user']->ta_id ?? $c['user']->nim_nip) . ') has conflict with "' .
-                    $c['schedule']->classRoom->course->name . ' Class ' . $c['schedule']->classRoom->name .
-                    '" at ' . $c['schedule']->start_time . '-' . $c['schedule']->end_time;
-            });
-
             return redirect()->back()
-                ->withErrors(['conflicts' => 'Schedule conflicts detected:'])
-                ->with('conflict_details', $conflictMessages->toArray())
+                ->withErrors(['class_room_id' => 'Only LAB classes can be managed here.'])
                 ->withInput();
+        }
+
+        if ($error = $this->detectConflict($validated, $classRoom, $schedule->id)) {
+            return $error;
         }
 
         $schedule->update($validated);
@@ -191,44 +89,69 @@ class LabScheduleController extends Controller
             ->with('success', 'Lab schedule deleted successfully.');
     }
 
-    /**
-     * Check if any enrolled user in the class has a schedule conflict.
-     * A conflict occurs when a user already has a class scheduled on the same day
-     * with overlapping time range.
-     */
-    private function checkScheduleConflicts(ClassRoom $classRoom, int $dayOfWeek, string $startTime, string $endTime, ?int $excludeScheduleId = null): \Illuminate\Support\Collection
+    // -------------------------------------------------------------------------
+    // Private helpers
+    // -------------------------------------------------------------------------
+
+    private function scheduleValidationRules(): array
     {
-        $enrolledUsers = $classRoom->users;
-        $conflicts = collect();
+        return [
+            'class_room_id' => ['required', 'exists:class_rooms,id'],
+            'day_of_week'   => ['required', 'integer', 'min:0', 'max:6'],
+            'start_time'    => ['required', 'date_format:H:i'],
+            'end_time'      => ['required', 'date_format:H:i', 'after:start_time'],
+            'room'          => ['nullable', 'string', 'max:50'],
+        ];
+    }
 
-        foreach ($enrolledUsers as $user) {
-            // Get all class_room_ids this user is enrolled in (excluding the current class)
-            $otherClassRoomIds = $user->classRooms()
-                ->where('class_rooms.id', '!=', $classRoom->id)
-                ->pluck('class_rooms.id');
+    private function getLabClassesForForm()
+    {
+        return ClassRoom::where('type', 'LAB')->with('course')->orderBy('course_id')->get();
+    }
 
-            // Find overlapping schedules on the same day
-            $overlapping = Schedule::whereIn('class_room_id', $otherClassRoomIds)
-                ->where('day_of_week', $dayOfWeek)
-                ->where(function ($q) use ($startTime, $endTime) {
-                    // Overlap: new_start < existing_end AND new_end > existing_start
-                    $q->where('start_time', '<', $endTime)
-                      ->where('end_time', '>', $startTime);
-                })
-                ->when($excludeScheduleId, function ($q) use ($excludeScheduleId) {
-                    $q->where('id', '!=', $excludeScheduleId);
-                })
-                ->with(['classRoom.course'])
-                ->get();
-
-            foreach ($overlapping as $s) {
-                $conflicts->push([
-                    'user' => $user,
-                    'schedule' => $s,
-                ]);
+    /**
+     * Run room, lecturer, and per-student conflict checks.
+     * Returns a redirect response on the first conflict found, or null on success.
+     */
+    private function detectConflict(array $validated, ClassRoom $classRoom, ?int $excludeId)
+    {
+        // Room conflict
+        if (!empty($validated['room'])) {
+            if ($this->conflicts->hasRoomConflict(
+                $validated['room'], $validated['day_of_week'],
+                $validated['start_time'], $validated['end_time'], $excludeId
+            )) {
+                return redirect()->back()
+                    ->withErrors(['room' => 'The room is already booked for the given time.'])
+                    ->withInput();
             }
         }
 
-        return $conflicts;
+        // Lecturer conflict
+        $conflictingLecturer = $this->conflicts->conflictingLecturerName(
+            $classRoom, $validated['day_of_week'],
+            $validated['start_time'], $validated['end_time'], $excludeId
+        );
+
+        if ($conflictingLecturer) {
+            return redirect()->back()
+                ->withErrors(['time' => 'Lecturer ' . $conflictingLecturer . ' already has another class at this time.'])
+                ->withInput();
+        }
+
+        // Per-student conflicts (Lab-specific)
+        $studentConflicts = $this->conflicts->studentConflicts(
+            $classRoom, $validated['day_of_week'],
+            $validated['start_time'], $validated['end_time'], $excludeId
+        );
+
+        if ($studentConflicts->isNotEmpty()) {
+            return redirect()->back()
+                ->withErrors(['conflicts' => 'Schedule conflicts detected:'])
+                ->with('conflict_details', $this->conflicts->formatStudentConflicts($studentConflicts))
+                ->withInput();
+        }
+
+        return null;
     }
 }
