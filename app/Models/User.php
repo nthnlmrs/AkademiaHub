@@ -25,6 +25,8 @@ class User extends Authenticatable
         'student_type',
         'nim_nip',
         'ta_id',
+        'tts_enabled',
+        'tts_voice',
     ];
 
     /**
@@ -47,6 +49,7 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'tts_enabled' => 'boolean',
         ];
     }
 

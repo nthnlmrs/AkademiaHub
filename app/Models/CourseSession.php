@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class CourseSession extends Model
 {
-    protected $fillable = ['course_id', 'session_number', 'title', 'description'];
+    protected $fillable = ['course_id', 'session_number', 'title', 'description', 'interactive_text'];
 
     public function course()
     {

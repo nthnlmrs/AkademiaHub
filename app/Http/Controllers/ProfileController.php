@@ -26,7 +26,18 @@ class ProfileController extends Controller
      */
     public function update(ProfileUpdateRequest $request): RedirectResponse
     {
-        $request->user()->fill($request->validated());
+        $validated = $request->validated();
+
+        // Handle boolean cast for checkbox (if the request is from the TTS form, missing means false)
+        if ($request->has('is_tts_form')) {
+            if (!isset($validated['tts_enabled'])) {
+                $validated['tts_enabled'] = false;
+            } else {
+                $validated['tts_enabled'] = true;
+            }
+        }
+
+        $request->user()->fill($validated);
 
         if ($request->user()->isDirty('email')) {
             $request->user()->email_verified_at = null;

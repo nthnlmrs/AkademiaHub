@@ -39,7 +39,45 @@
 
                             <div class="space-y-4">
                                 <h3 class="text-xl font-bold text-slate-900 border-l-4 border-cyan-400 pl-4">Learning Outcome</h3>
-                                <p class="text-slate-600 leading-relaxed pl-5">{{ $learningOutcome }}</p>
+
+                                @if($activeSession->interactive_text)
+                                    <!-- Interactive Reader Component -->
+                                    <div class="pl-5"
+                                         x-data="interactiveReader(
+                                            @js($activeSession->interactive_text),
+                                            {{ Auth::check() && Auth::user()->tts_enabled ? 'true' : 'false' }},
+                                            '{{ Auth::check() ? Auth::user()->tts_voice : '' }}'
+                                         )">
+
+                                        @if(Auth::check() && !Auth::user()->tts_enabled)
+                                            <div class="mb-4 text-xs inline-flex items-center gap-2 px-3 py-2 bg-yellow-50 text-yellow-800 rounded-lg border border-yellow-200">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                                Fitur suara (TTS) dinonaktifkan. Anda bisa mengaktifkannya di <a href="{{ route('profile.edit') }}" class="font-bold underline">Pengaturan Profil</a>.
+                                            </div>
+                                        @endif
+
+                                        <div class="text-2xl leading-loose font-medium text-slate-800 select-none cursor-pointer"
+                                             @mousedown="startDrag"
+                                             @touchstart.passive="startDrag"
+                                             @mousemove="handleMove"
+                                             @touchmove.passive="handleMove"
+                                             @mouseup="stopDrag"
+                                             @mouseleave="stopDrag"
+                                             @touchend.passive="stopDrag">
+
+                                            <template x-for="(word, index) in words" :key="index">
+                                                <span class="inline-block px-1 mx-1 rounded-lg transition-all duration-150 ease-out"
+                                                      :class="{'bg-yellow-200 scale-110 shadow-sm text-yellow-900': activeWordIndex === index, 'hover:bg-slate-100': activeWordIndex !== index}"
+                                                      :data-word-index="index"
+                                                      @click="readWord(word, index)"
+                                                      x-text="word">
+                                                </span>
+                                            </template>
+                                        </div>
+                                    </div>
+                                @else
+                                    <p class="text-slate-600 leading-relaxed pl-5">{{ $learningOutcome }}</p>
+                                @endif
                             </div>
 
                             <div class="space-y-4">

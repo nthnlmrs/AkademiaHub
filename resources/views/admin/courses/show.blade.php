@@ -31,6 +31,12 @@
                         <textarea name="description" rows="5" placeholder="First line as Learning Outcome, subsequent lines as Sub Topics..." 
                                   class="w-full bg-slate-50 border-slate-200 rounded-xl text-sm focus:ring-indigo-500 focus:border-indigo-500"></textarea>
                     </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-400 uppercase mb-1.5">Interactive Text (SLB Reader)</label>
+                        <textarea name="interactive_text" rows="4" placeholder="Masukkan teks interaktif khusus (opsional)..."
+                                  class="w-full bg-slate-50 border-slate-200 rounded-xl text-sm focus:ring-indigo-500 focus:border-indigo-500"></textarea>
+                        <p class="text-[0.65rem] text-slate-400 mt-1">Teks ini akan dibacakan per kata di Interactive Text Reader.</p>
+                    </div>
                     <button type="submit" class="w-full py-3 bg-indigo-600 text-white font-bold rounded-xl shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition-all uppercase tracking-widest text-sm">
                         Add Session
                     </button>
@@ -211,6 +217,13 @@
                                       class="w-full bg-slate-50 border-slate-200 rounded-xl text-sm focus:ring-indigo-500 focus:border-indigo-500"></textarea>
                         </div>
                         
+                        <div>
+                            <label class="block text-xs font-bold text-slate-400 uppercase mb-1.5">Interactive Text (SLB Reader)</label>
+                            <textarea name="interactive_text" rows="4" x-text="currentSession.interactive_text" placeholder="Masukkan teks interaktif khusus (opsional)..."
+                                      class="w-full bg-slate-50 border-slate-200 rounded-xl text-sm focus:ring-indigo-500 focus:border-indigo-500"></textarea>
+                            <p class="text-[0.65rem] text-slate-400 mt-1">Teks ini akan dibacakan per kata di Interactive Text Reader.</p>
+                        </div>
+
                         <div class="flex gap-3 pt-4">
                             <button type="submit" class="flex-1 py-3 bg-indigo-600 text-white font-bold rounded-xl shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition-all uppercase tracking-widest text-sm">
                                 Save Changes

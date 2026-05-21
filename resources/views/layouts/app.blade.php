@@ -14,6 +14,7 @@
 
         <!-- Scripts -->
         @vite(['resources/css/app.css', 'resources/js/app.js'])
+        <script src="{{ asset('js/interactive-reader.js') }}"></script>
     </head>
     <body class="font-sans antialiased bg-slate-50 text-slate-900 min-h-screen">
         <div class="flex min-h-screen">
