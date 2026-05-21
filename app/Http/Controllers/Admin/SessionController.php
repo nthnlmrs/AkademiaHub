@@ -96,6 +96,7 @@ class SessionController extends Controller
             'session_number' => ['required', 'integer', 'min:1'],
             'title'          => ['required', 'string', 'max:255'],
             'description'    => ['nullable', 'string'],
+            'interactive_text' => ['nullable', 'string'],
         ];
     }
 }

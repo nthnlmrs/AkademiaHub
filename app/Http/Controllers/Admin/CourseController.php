@@ -55,7 +55,7 @@ class CourseController extends Controller
             $this->sessionMessages($request->session_number)
         );
 
-        $course->courseSessions()->create($request->only(['session_number', 'title', 'description']));
+        $course->courseSessions()->create($request->only(['session_number', 'title', 'description', 'interactive_text']));
 
         return redirect()->back()->with('success', 'Session added successfully.');
     }
@@ -67,7 +67,7 @@ class CourseController extends Controller
             $this->sessionMessages($request->session_number)
         );
 
-        $session->update($request->only(['session_number', 'title', 'description']));
+        $session->update($request->only(['session_number', 'title', 'description', 'interactive_text']));
 
         return redirect()->route('admin.courses.show', $course)->with('success', 'Session updated successfully.');
     }
@@ -135,6 +135,7 @@ class CourseController extends Controller
             ],
             'title'       => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
+            'interactive_text' => ['nullable', 'string'],
         ];
     }
 

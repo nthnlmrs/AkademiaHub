@@ -23,6 +23,11 @@
                     <label class="form-label">Description</label>
                     <textarea name="description" class="form-textarea" placeholder="Session description...">{{ old('description') }}</textarea>
                 </div>
+                <div>
+                    <label class="form-label">Interactive Text (SLB Reader)</label>
+                    <textarea name="interactive_text" class="form-textarea h-32" placeholder="Masukkan teks interaktif khusus untuk fitur Interactive Text Reader (opsional)...">{{ old('interactive_text') }}</textarea>
+                    <p class="text-xs text-slate-500 mt-1">Teks ini akan dibacakan per kata saat diklik pada fitur Interactive Text Reader.</p>
+                </div>
                 <div class="flex gap-3 pt-2">
                     <button type="submit" class="btn-primary">Create Session</button>
                     <a href="{{ route('admin.classrooms.sessions.index', $classroom) }}" class="btn-secondary">Cancel</a>
