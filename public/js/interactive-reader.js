@@ -3,15 +3,11 @@ document.addEventListener('alpine:init', () => {
         text: text,
         enabled: enabled,
         preferredVoice: preferredVoice,
-        words: [],
         voices: [],
         selectedVoice: null,
-        isDragging: false,
-        activeWordIndex: -1,
+        isPlaying: false,
 
         init() {
-            this.words = this.text.split(/\s+/).filter(w => w.length > 0);
-
             const loadVoices = () => {
                 this.voices = window.speechSynthesis.getVoices();
                 if (this.voices.length > 0) {
@@ -23,6 +19,11 @@ document.addEventListener('alpine:init', () => {
             if (speechSynthesis.onvoiceschanged !== undefined) {
                 speechSynthesis.onvoiceschanged = loadVoices;
             }
+
+            // Handle when speech ends naturally
+            this.handleEnd = () => {
+                this.isPlaying = false;
+            };
         },
 
         determineVoice() {
@@ -43,17 +44,25 @@ document.addEventListener('alpine:init', () => {
             this.selectedVoice = this.voices[0];
         },
 
-        readWord(word, index) {
+        togglePlay() {
             if (!this.enabled || !window.speechSynthesis) return;
 
-            this.activeWordIndex = index;
-
-            if (navigator.vibrate) {
-                navigator.vibrate(50);
+            if (this.isPlaying) {
+                this.stop();
+            } else {
+                this.play();
             }
+        },
+
+        play() {
+            if (!this.enabled || !window.speechSynthesis) return;
 
             window.speechSynthesis.cancel();
-            const utterance = new SpeechSynthesisUtterance(word);
+
+            // Strip simple html tags if any exist in the text to avoid reading HTML aloud
+            const plainText = this.text.replace(/<[^>]*>?/gm, '');
+
+            const utterance = new SpeechSynthesisUtterance(plainText);
 
             if (this.selectedVoice) {
                 utterance.voice = this.selectedVoice;
@@ -61,46 +70,17 @@ document.addEventListener('alpine:init', () => {
 
             utterance.rate = 0.9;
             utterance.pitch = 1;
-
-            utterance.onend = () => {
-                if (this.activeWordIndex === index && !this.isDragging) {
-                    this.activeWordIndex = -1;
-                }
-            };
+            utterance.onend = this.handleEnd;
 
             window.speechSynthesis.speak(utterance);
+            this.isPlaying = true;
         },
 
-        handleMove(e) {
-            if (!this.isDragging) return;
-
-            let clientX, clientY;
-            if (e.touches && e.touches.length > 0) {
-                clientX = e.touches[0].clientX;
-                clientY = e.touches[0].clientY;
-            } else {
-                clientX = e.clientX;
-                clientY = e.clientY;
+        stop() {
+            if (window.speechSynthesis) {
+                window.speechSynthesis.cancel();
             }
-
-            const element = document.elementFromPoint(clientX, clientY);
-
-            if (element && element.dataset.wordIndex !== undefined) {
-                const index = parseInt(element.dataset.wordIndex, 10);
-                if (index !== this.activeWordIndex) {
-                    this.readWord(this.words[index], index);
-                }
-            }
-        },
-
-        startDrag() {
-            this.isDragging = true;
-        },
-
-        stopDrag() {
-            this.isDragging = false;
-            this.activeWordIndex = -1;
-            window.speechSynthesis.cancel();
+            this.isPlaying = false;
         }
     }));
 });
