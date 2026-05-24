@@ -4,12 +4,14 @@
     <div class="space-y-8">
         <x-class-header :classroom="$classroom" activeTab="gradebook" />
 
-        @if(Auth::user()->isAdmin() || Auth::user()->isLecturer() || Auth::user()->isTeachingAssistant())
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <!-- Rubric Management (Admin/Lecturer) -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Rubric Management / Grade Components (Always visible) -->
+            <div class="bg-white border border-slate-200 rounded-2xl p-6 space-y-4 shadow-sm">
+                <h3 class="text-sm font-bold text-slate-800 uppercase tracking-widest">
+                    {{ (Auth::user()->isAdmin() || Auth::user()->isLecturer()) ? 'Manage Rubrics' : 'Grade Components' }}
+                </h3>
+                
                 @if(Auth::user()->isAdmin() || Auth::user()->isLecturer())
-                <div class="bg-white border border-slate-200 rounded-2xl p-6 space-y-4">
-                    <h3 class="text-sm font-bold text-slate-800 uppercase tracking-widest">Manage Rubrics</h3>
                     <form method="POST" action="{{ route('grade.rubric.store', $classroom) }}" class="space-y-3">
                         @csrf
                         <input type="text" name="name" required placeholder="e.g. Assignment, Mid Exam" 
@@ -20,20 +22,24 @@
                             <button type="submit" class="bg-orange-500 hover:bg-orange-600 text-white px-4 rounded-xl font-bold transition-colors">Add</button>
                         </div>
                     </form>
-
-                    <div class="pt-4 space-y-2">
-                        @foreach($rubrics as $rubric)
-                            <div class="flex justify-between items-center text-sm p-3 bg-slate-50 rounded-xl">
-                                <span class="font-semibold text-slate-700">{{ $rubric->name }}</span>
-                                <span class="text-orange-600 font-bold">{{ $rubric->weight }}%</span>
-                            </div>
-                        @endforeach
-                    </div>
-                </div>
                 @endif
 
+                <div class="pt-2 space-y-2">
+                    @forelse($rubrics as $rubric)
+                        <div class="flex justify-between items-center text-sm p-3 bg-slate-50 rounded-xl">
+                            <span class="font-semibold text-slate-700">{{ $rubric->name }}</span>
+                            <span class="text-orange-600 font-bold">{{ $rubric->weight }}%</span>
+                        </div>
+                    @empty
+                        <div class="text-center py-4 text-slate-400 text-xs italic">No rubrics created yet.</div>
+                    @endforelse
+                </div>
+            </div>
+
+            <!-- Add Grade Form (Admin/Lecturer/TA Only) OR Student Grade Summary Card (Student Only) -->
+            @if(Auth::user()->isAdmin() || Auth::user()->isLecturer() || Auth::user()->isTeachingAssistant())
                 <!-- Add Grade Form -->
-                <div class="{{ (Auth::user()->isAdmin() || Auth::user()->isLecturer()) ? 'lg:col-span-2' : 'lg:col-span-3' }} bg-white border border-slate-200 rounded-2xl p-6">
+                <div class="{{ (Auth::user()->isAdmin() || Auth::user()->isLecturer()) ? 'lg:col-span-2' : 'lg:col-span-3' }} bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
                     <h3 class="text-sm font-bold text-slate-800 uppercase tracking-widest mb-6">Add/Update Student Grade</h3>
                     <form method="POST" action="{{ route('grade.store', $classroom) }}" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         @csrf
@@ -88,8 +94,44 @@
                         </div>
                     </form>
                 </div>
-            </div>
-        @endif
+            @else
+                <!-- Student Summary Card -->
+                <div class="lg:col-span-2 bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex flex-col justify-between min-h-[220px]">
+                    <div>
+                        <h3 class="text-sm font-bold text-slate-800 uppercase tracking-widest mb-3">Grade Summary</h3>
+                        <p class="text-xs text-slate-500 leading-relaxed mb-6">
+                            This panel displays your overall academic standing in this course. Grades are calculated based on the weight of each component.
+                        </p>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-auto">
+                        <div class="p-4 bg-slate-50 rounded-2xl flex flex-col justify-center">
+                            <span class="block text-[0.65rem] font-bold text-slate-400 uppercase">Total Weight Checked</span>
+                            <span class="text-2xl font-bold text-slate-700">
+                                {{ $rubrics->sum('weight') }}%
+                            </span>
+                        </div>
+                        <div class="p-4 bg-orange-500 text-white rounded-2xl flex flex-col justify-center">
+                            <span class="block text-[0.65rem] font-bold text-white/70 uppercase">Estimated Final Grade</span>
+                            <span class="text-2xl font-black">
+                                @php
+                                    $finalGrade = 0;
+                                    $weightSum = 0;
+                                    foreach($rubrics as $rubric) {
+                                        $grade = $grades->where('grade_rubric_id', $rubric->id)->first();
+                                        if ($grade) {
+                                            $finalGrade += ($grade->score / $grade->max_score) * $rubric->weight;
+                                            $weightSum += $rubric->weight;
+                                        }
+                                    }
+                                @endphp
+                                {{ $weightSum > 0 ? round(($finalGrade / $weightSum) * 100, 1) . '%' : '-' }}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            @endif
+        </div>
 
         <!-- Grades Table -->
         <div class="bg-white border border-slate-200 rounded-3xl overflow-hidden shadow-sm">
@@ -128,7 +170,7 @@
                                     <td class="px-6 py-4 text-center">
                                         <div class="inline-flex items-center gap-2">
                                             <span class="text-lg font-bold text-slate-800">{{ round($grade->score, 1) }}</span>
-                                            <span class="text-xs text-slate-300">/ {{ round($grade->max_score, 0) }}</span>
+                                            <span class="text-xs text-slate-500">/ {{ round($grade->max_score, 0) }}</span>
                                         </div>
                                     </td>
                                     <td class="px-6 py-4 text-right">
