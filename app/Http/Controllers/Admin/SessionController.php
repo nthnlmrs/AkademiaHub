@@ -11,13 +11,14 @@ class SessionController extends Controller
 {
     public function index(ClassRoom $classroom)
     {
-        $classroom->load(['course', 'courseSessions']);
+        $classroom->load(['course', 'course.courseSessions']);
         return view('admin.sessions.index', compact('classroom'));
     }
 
     public function create(ClassRoom $classroom)
     {
-        $nextNumber = $classroom->courseSessions()->max('session_number') + 1;
+        $classroom->load('course');
+        $nextNumber = $classroom->course->courseSessions()->max('session_number') + 1;
         return view('admin.sessions.create', compact('classroom', 'nextNumber'));
     }
 
@@ -25,7 +26,8 @@ class SessionController extends Controller
     {
         $validated = $request->validate($this->sessionRules());
 
-        $classroom->courseSessions()->create($validated);
+        $classroom->load('course');
+        $classroom->course->courseSessions()->create($validated);
 
         return redirect()->route('admin.classrooms.sessions.index', $classroom)
             ->with('success', 'Session created successfully.');

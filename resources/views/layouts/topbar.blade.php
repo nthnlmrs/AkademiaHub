@@ -43,8 +43,8 @@
                             <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/></svg>
                             High Contrast
                         </span>
-                        <div class="w-8 h-4 bg-slate-200 rounded-full relative" :class="{'bg-indigo-500': highContrast}">
-                            <div class="absolute w-4 h-4 bg-white rounded-full shadow-sm transform transition-transform" :class="{'translate-x-4': highContrast, 'translate-x-0': !highContrast}"></div>
+                        <div class="w-8 h-4 bg-slate-200 rounded-full relative" :class="{'bg-indigo-500': $store.accessibility.highContrast}">
+                            <div class="absolute w-4 h-4 bg-white rounded-full shadow-sm transform transition-transform" :class="{'translate-x-4': $store.accessibility.highContrast, 'translate-x-0': !$store.accessibility.highContrast}"></div>
                         </div>
                     </button>
 
@@ -53,16 +53,19 @@
                             <span class="font-serif font-bold text-slate-400 text-base" aria-hidden="true">A</span>
                             Dyslexia Font
                         </span>
-                        <div class="w-8 h-4 bg-slate-200 rounded-full relative" :class="{'bg-indigo-500': dyslexicFont}">
-                            <div class="absolute w-4 h-4 bg-white rounded-full shadow-sm transform transition-transform" :class="{'translate-x-4': dyslexicFont, 'translate-x-0': !dyslexicFont}"></div>
+                        <div class="w-8 h-4 bg-slate-200 rounded-full relative" :class="{'bg-indigo-500': $store.accessibility.dyslexicFont}">
+                            <div class="absolute w-4 h-4 bg-white rounded-full shadow-sm transform transition-transform" :class="{'translate-x-4': $store.accessibility.dyslexicFont, 'translate-x-0': !$store.accessibility.dyslexicFont}"></div>
                         </div>
                     </button>
 
-                    <button onclick="window.dispatchEvent(new CustomEvent('toggle-reader'))" class="w-full flex items-center justify-between px-4 py-3 sm:py-2.5 text-sm text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors">
+                    <button @click="toggleReadAloud()" class="w-full flex items-center justify-between px-4 py-3 sm:py-2.5 text-sm text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors">
                         <span class="flex items-center gap-2">
                             <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" /></svg>
                             Read Aloud Mode
                         </span>
+                        <div class="w-8 h-4 bg-slate-200 rounded-full relative" :class="{'bg-indigo-500': $store.accessibility.readAloud}">
+                            <div class="absolute w-4 h-4 bg-white rounded-full shadow-sm transform transition-transform" :class="{'translate-x-4': $store.accessibility.readAloud, 'translate-x-0': !$store.accessibility.readAloud}"></div>
+                        </div>
                     </button>
                 </div>
             </div>

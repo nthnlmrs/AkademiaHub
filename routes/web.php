@@ -30,6 +30,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+    Route::post('/profile/accessibility/toggle', [ProfileController::class, 'toggleAccessibility'])->name('profile.accessibility.toggle');
 
     // Schedule
     Route::get('/schedule', [ScheduleController::class, 'index'])->name('schedule.index');
@@ -37,7 +38,7 @@ Route::middleware('auth')->group(function () {
     // Class Detail
     Route::get('/class/{classroom}', [ClassDetailController::class, 'show'])->name('class.show');
     Route::get('/class/{classroom}/people', [ClassDetailController::class, 'people'])->name('class.people');
-    Route::get('/class/{classroom}/session/{session}', [ClassDetailController::class, 'session'])->name('class.session');
+    Route::get('/class/{classroom}/session/{courseSession}', [ClassDetailController::class, 'session'])->name('class.session');
 
     // Modules
     Route::post('/class/{classroom}/session/{session}/module', [ModuleController::class, 'store'])->name('module.store');

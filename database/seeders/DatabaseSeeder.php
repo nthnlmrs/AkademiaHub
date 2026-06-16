@@ -10,6 +10,7 @@ use App\Models\Course;
 use App\Models\ClassRoom;
 use App\Models\GradeRubric;
 use App\Models\CourseSession;
+use App\Models\Schedule;
 
 class DatabaseSeeder extends Seeder
 {
@@ -141,6 +142,37 @@ class DatabaseSeeder extends Seeder
                     ['weight' => $r['weight']]
                 );
             }
+        }
+
+        // ---------------------------------------------------------------
+        // Seed Schedules
+        // day_of_week: 0=Sun, 1=Mon, 2=Tue, 3=Wed, 4=Thu, 5=Fri, 6=Sat
+        // ---------------------------------------------------------------
+        $scheduleSlots = [
+            // [day, start,  end]
+            [1, '07:30', '10:00'],  // Monday    morning
+            [1, '10:15', '12:45'], // Monday    late morning
+            [2, '07:30', '10:00'],  // Tuesday   morning
+            [2, '13:00', '15:30'], // Tuesday   afternoon
+            [3, '07:30', '10:00'],  // Wednesday morning
+            [3, '10:15', '12:45'], // Wednesday late morning
+            [4, '07:30', '10:00'],  // Thursday  morning
+            [4, '13:00', '15:30'], // Thursday  afternoon
+            [5, '07:30', '10:00'],  // Friday    morning
+            [5, '10:15', '12:45'], // Friday    late morning
+        ];
+
+        foreach ($classrooms as $index => $classroom) {
+            $slot = $scheduleSlots[$index % count($scheduleSlots)];
+            Schedule::updateOrCreate(
+                ['class_room_id' => $classroom->id],
+                [
+                    'day_of_week' => $slot[0],
+                    'start_time'  => $slot[1],
+                    'end_time'    => $slot[2],
+                    'room'        => $classroom->room ?? 'R' . rand(100, 499),
+                ]
+            );
         }
     }
 }

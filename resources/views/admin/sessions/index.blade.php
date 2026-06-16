@@ -15,7 +15,7 @@
         </div>
 
         <div class="space-y-3">
-            @forelse($classroom->courseSessions as $session)
+            @forelse($classroom->course->courseSessions as $session)
                 <div class="glass-card p-5">
                     <div class="flex items-center justify-between">
                         <div class="flex items-center gap-4">

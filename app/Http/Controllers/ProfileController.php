@@ -47,6 +47,23 @@ class ProfileController extends Controller
     }
 
     /**
+     * Toggle a single accessibility setting via AJAX.
+     */
+    public function toggleAccessibility(Request $request): \Illuminate\Http\JsonResponse
+    {
+        $request->validate([
+            'setting' => ['required', 'string', 'in:high_contrast,dyslexia_font,tts_enabled'],
+        ]);
+
+        $user    = $request->user();
+        $setting = $request->input('setting');
+        $user->$setting = !$user->$setting;
+        $user->save();
+
+        return response()->json(['value' => $user->$setting]);
+    }
+
+    /**
      * Delete the user's account.
      */
     public function destroy(Request $request): RedirectResponse

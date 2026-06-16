@@ -49,27 +49,24 @@
                                             '{{ Auth::check() ? Auth::user()->tts_voice : '' }}'
                                          )">
 
-                                        @if(Auth::check() && !Auth::user()->tts_enabled)
-                                            <div class="mb-4 text-xs inline-flex items-center gap-2 px-3 py-2 bg-yellow-50 text-yellow-800 rounded-lg border border-yellow-200">
-                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                                                Fitur suara (TTS) dinonaktifkan. Anda bisa mengaktifkannya di <a href="{{ route('profile.edit') }}" class="font-bold underline">Pengaturan Profil</a>.
-                                            </div>
-                                        @endif
+                                        <div class="mb-4 text-xs inline-flex items-center gap-2 px-3 py-2 bg-yellow-50 text-yellow-800 rounded-lg border border-yellow-200"
+                                             x-show="!$store.accessibility.readAloud">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                            Fitur suara (TTS) dinonaktifkan. Aktifkan lewat tombol <strong class="mx-1">Read Aloud Mode</strong> di pojok kanan atas.
+                                        </div>
 
-                                        @if(Auth::check() && Auth::user()->tts_enabled)
-                                            <div class="mb-4">
-                                                <button @click="togglePlay()"
-                                                        class="inline-flex items-center gap-2 px-4 py-2 bg-indigo-100 text-indigo-700 hover:bg-indigo-200 rounded-xl font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
-                                                        :aria-label="isPlaying ? 'Berhenti membaca' : 'Bacakan teks materi'">
+                                        <div class="mb-4" x-show="$store.accessibility.readAloud">
+                                            <button @click="togglePlay()"
+                                                    class="inline-flex items-center gap-2 px-4 py-2 bg-indigo-100 text-indigo-700 hover:bg-indigo-200 rounded-xl font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+                                                    :aria-label="isPlaying ? 'Berhenti membaca' : 'Bacakan teks materi'">
 
-                                                    <svg x-show="!isPlaying" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                                <svg x-show="!isPlaying" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
 
-                                                    <svg x-show="isPlaying" style="display: none;" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 10h.01M15 10h.01M12 10h.01M9 14h.01M15 14h.01M12 14h.01"></path></svg>
+                                                <svg x-show="isPlaying" style="display: none;" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 10h.01M15 10h.01M12 10h.01M9 14h.01M15 14h.01M12 14h.01"></path></svg>
 
-                                                    <span x-text="isPlaying ? 'Berhenti Membaca' : 'Bacakan Materi'"></span>
-                                                </button>
-                                            </div>
-                                        @endif
+                                                <span x-text="isPlaying ? 'Berhenti Membaca' : 'Bacakan Materi'"></span>
+                                            </button>
+                                        </div>
 
                                         <div class="text-xl md:text-2xl leading-loose font-medium text-slate-800">
                                             {!! nl2br(e($activeSession->interactive_text)) !!}

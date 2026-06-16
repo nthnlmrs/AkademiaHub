@@ -66,17 +66,19 @@
             document.addEventListener('alpine:init', () => {
                 Alpine.store('notifications', {
                     open: false,
-                    toggle() {
-                        this.open = !this.open
-                    },
-                    show() {
-                        this.open = true
-                    },
-                    close() {
-                        this.open = false
-                    }
-                })
-            })
+                    toggle() { this.open = !this.open },
+                    show()   { this.open = true },
+                    close()  { this.open = false }
+                });
+
+                Alpine.store('accessibility', {
+                    highContrast: {{ Auth::check() && Auth::user()->high_contrast ? 'true' : 'false' }},
+                    dyslexicFont: {{ Auth::check() && Auth::user()->dyslexia_font ? 'true' : 'false' }},
+                    readAloud:    {{ Auth::check() && Auth::user()->tts_enabled   ? 'true' : 'false' }},
+                });
+            });
+
+            window.addEventListener('toggle-reader', () => toggleReadAloud());
 
             function toggleSidebar() {
                 const sidebar = document.getElementById('sidebar');
@@ -84,6 +86,31 @@
                 sidebar.classList.toggle('-translate-x-full');
                 overlay.classList.toggle('hidden');
             }
+
+            async function _toggleAccessibility(setting, bodyClass, storeKey) {
+                try {
+                    const res = await fetch('{{ route('profile.accessibility.toggle') }}', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                            'Accept': 'application/json',
+                        },
+                        body: JSON.stringify({ setting }),
+                    });
+                    const data = await res.json();
+                    if (bodyClass) document.body.classList.toggle(bodyClass, data.value);
+                    if (window.Alpine) {
+                        Alpine.store('accessibility')[storeKey] = data.value;
+                    }
+                } catch (e) {
+                    console.error('Accessibility toggle failed', e);
+                }
+            }
+
+            function toggleHighContrast()  { _toggleAccessibility('high_contrast', 'high-contrast', 'highContrast'); }
+            function toggleDyslexicFont()  { _toggleAccessibility('dyslexia_font',  'dyslexia-font',  'dyslexicFont');  }
+            function toggleReadAloud()     { _toggleAccessibility('tts_enabled',    null,             'readAloud');      }
         </script>
     </body>
 </html>
