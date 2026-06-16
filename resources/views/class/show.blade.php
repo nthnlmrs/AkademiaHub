@@ -56,23 +56,23 @@
                                             </div>
                                         @endif
 
-                                        <div class="text-2xl leading-loose font-medium text-slate-800 select-none cursor-pointer"
-                                             @mousedown="startDrag"
-                                             @touchstart.passive="startDrag"
-                                             @mousemove="handleMove"
-                                             @touchmove.passive="handleMove"
-                                             @mouseup="stopDrag"
-                                             @mouseleave="stopDrag"
-                                             @touchend.passive="stopDrag">
+                                        @if(Auth::check() && Auth::user()->tts_enabled)
+                                            <div class="mb-4">
+                                                <button @click="togglePlay()"
+                                                        class="inline-flex items-center gap-2 px-4 py-2 bg-indigo-100 text-indigo-700 hover:bg-indigo-200 rounded-xl font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+                                                        :aria-label="isPlaying ? 'Berhenti membaca' : 'Bacakan teks materi'">
 
-                                            <template x-for="(word, index) in words" :key="index">
-                                                <span class="inline-block px-1 mx-1 rounded-lg transition-all duration-150 ease-out"
-                                                      :class="{'bg-yellow-200 scale-110 shadow-sm text-yellow-900': activeWordIndex === index, 'hover:bg-slate-100': activeWordIndex !== index}"
-                                                      :data-word-index="index"
-                                                      @click="readWord(word, index)"
-                                                      x-text="word">
-                                                </span>
-                                            </template>
+                                                    <svg x-show="!isPlaying" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+
+                                                    <svg x-show="isPlaying" style="display: none;" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 10h.01M15 10h.01M12 10h.01M9 14h.01M15 14h.01M12 14h.01"></path></svg>
+
+                                                    <span x-text="isPlaying ? 'Berhenti Membaca' : 'Bacakan Materi'"></span>
+                                                </button>
+                                            </div>
+                                        @endif
+
+                                        <div class="text-xl md:text-2xl leading-loose font-medium text-slate-800">
+                                            {!! nl2br(e($activeSession->interactive_text)) !!}
                                         </div>
                                     </div>
                                 @else

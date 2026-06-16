@@ -30,11 +30,9 @@ class ProfileController extends Controller
 
         // Handle boolean cast for checkbox (if the request is from the TTS form, missing means false)
         if ($request->has('is_tts_form')) {
-            if (!isset($validated['tts_enabled'])) {
-                $validated['tts_enabled'] = false;
-            } else {
-                $validated['tts_enabled'] = true;
-            }
+            $validated['tts_enabled'] = isset($validated['tts_enabled']);
+            $validated['high_contrast'] = isset($validated['high_contrast']);
+            $validated['dyslexia_font'] = isset($validated['dyslexia_font']);
         }
 
         $request->user()->fill($validated);

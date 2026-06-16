@@ -7,10 +7,10 @@
             <p class="text-slate-500 mt-1">Manage your account settings</p>
         </div>
 
-        <!-- Interactive Text Reader Settings -->
+        <!-- Accessibility & Interactive Reader Settings -->
         <div class="glass-card p-6" x-data="ttsSettings()">
-            <h3 class="text-lg font-semibold mb-4 border-b pb-2">Interactive Reader Settings</h3>
-            <p class="text-sm text-slate-500 mb-4">Pengaturan untuk fitur pembaca teks interaktif pada halaman materi.</p>
+            <h3 class="text-lg font-semibold mb-4 border-b pb-2">Pengaturan Aksesibilitas</h3>
+            <p class="text-sm text-slate-500 mb-4">Pengaturan untuk mempermudah pengalaman belajar bagi semua siswa.</p>
             <form method="POST" action="{{ route('profile.update') }}" class="space-y-5">
                 @csrf
                 @method('patch')
@@ -19,7 +19,7 @@
                 <div class="flex items-center justify-between">
                     <div>
                         <label class="font-medium text-slate-900">Aktifkan Suara (Text-to-Speech)</label>
-                        <p class="text-xs text-slate-500">Membaca teks secara otomatis saat diklik atau digeser.</p>
+                        <p class="text-xs text-slate-500">Membaca teks halaman materi bersuara melalui tombol.</p>
                     </div>
                     <label class="relative inline-flex items-center cursor-pointer">
                         <input type="checkbox" name="tts_enabled" value="1" class="sr-only peer" {{ Auth::user()->tts_enabled ? 'checked' : '' }}>
@@ -39,12 +39,38 @@
                     <p class="text-xs text-slate-500 mt-1">Sistem akan memprioritaskan suara bahasa Indonesia (id-ID) jika "Default" dipilih.</p>
                 </div>
 
+                <hr class="border-slate-200">
+
+                <!-- Toggle High Contrast -->
+                <div class="flex items-center justify-between">
+                    <div>
+                        <label class="font-medium text-slate-900">Tema Kontras Tinggi (High Contrast)</label>
+                        <p class="text-xs text-slate-500">Meningkatkan kontras warna teks dan latar belakang (Bermanfaat bagi low vision).</p>
+                    </div>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" name="high_contrast" value="1" class="sr-only peer" {{ Auth::user()->high_contrast ? 'checked' : '' }}>
+                        <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+                    </label>
+                </div>
+
+                <!-- Toggle Dyslexia Font -->
+                <div class="flex items-center justify-between">
+                    <div>
+                        <label class="font-medium text-slate-900">Gunakan Font Disleksia</label>
+                        <p class="text-xs text-slate-500">Mengubah huruf menggunakan gaya khusus yang lebih mudah dibaca untuk anak dengan Disleksia.</p>
+                    </div>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" name="dyslexia_font" value="1" class="sr-only peer" {{ Auth::user()->dyslexia_font ? 'checked' : '' }}>
+                        <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+                    </label>
+                </div>
+
                 <!-- Hidden Required Fields for ProfileUpdateRequest -->
                 <input type="hidden" name="name" value="{{ Auth::user()->name }}">
                 <input type="hidden" name="email" value="{{ Auth::user()->email }}">
                 <input type="hidden" name="is_tts_form" value="1">
 
-                <button type="submit" class="btn-primary w-full text-center mt-2">Simpan Pengaturan Reader</button>
+                <button type="submit" class="btn-primary w-full text-center mt-2">Simpan Pengaturan Aksesibilitas</button>
             </form>
         </div>
 
