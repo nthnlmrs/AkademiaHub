@@ -27,8 +27,14 @@
         <!-- Schedule List -->
         @if($schedules->count() > 0)
             <div class="space-y-3">
-                @foreach($schedules as $index => $schedule)
-                    <a href="{{ route('class.show', $schedule->classRoom) }}" class="schedule-card block">
+                @foreach($schedules as $schedule)
+                    @php
+                        $sessionTarget = $schedule->currentSession;
+                        $href = $sessionTarget
+                            ? route('class.session', [$schedule->classRoom, $sessionTarget])
+                            : route('class.show', $schedule->classRoom);
+                    @endphp
+                    <a href="{{ $href }}" class="schedule-card block">
                         <div class="flex items-start gap-4">
                             <!-- Time Column -->
                             <div class="text-center min-w-[70px]">
@@ -48,8 +54,10 @@
                                 </div>
                                 <p class="text-sm text-slate-600">
                                     Class {{ $schedule->classRoom->name }} &middot;
-                                    {{ $schedule->classRoom->course->code }} &middot;
-                                    Session {{ $index + 1 }}
+                                    {{ $schedule->classRoom->course->code }}
+                                    @if($sessionTarget)
+                                        &middot; <span class="font-medium text-indigo-500">Session {{ $sessionTarget->session_number }}</span>
+                                    @endif
                                 </p>
                                 <div class="flex items-center gap-4 mt-2 text-xs text-slate-500">
                                     @if($schedule->room || $schedule->classRoom->room)

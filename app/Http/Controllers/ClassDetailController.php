@@ -31,13 +31,13 @@ class ClassDetailController extends Controller
         return view('class.show', compact('classroom', 'sessions', 'activeSession'));
     }
 
-    public function session(ClassRoom $classroom, CourseSession $session)
+    public function session(ClassRoom $classroom, CourseSession $courseSession)
     {
         $this->authorizeClassroomAccess($classroom);
 
         $this->loadClassroomBase($classroom);
         $sessions      = $classroom->course->courseSessions;
-        $activeSession = $session;
+        $activeSession = $courseSession;
         $activeSession->load(['activities', 'modules', 'quizzes.questions']);
 
         return view('class.show', compact('classroom', 'sessions', 'activeSession'));

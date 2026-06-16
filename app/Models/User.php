@@ -27,6 +27,8 @@ class User extends Authenticatable
         'ta_id',
         'tts_enabled',
         'tts_voice',
+        'high_contrast',
+        'dyslexia_font',
     ];
 
     /**
@@ -50,6 +52,8 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'tts_enabled' => 'boolean',
+            'high_contrast' => 'boolean',
+            'dyslexia_font' => 'boolean',
         ];
     }
 

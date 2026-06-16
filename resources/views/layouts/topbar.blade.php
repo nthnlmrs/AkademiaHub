@@ -14,6 +14,87 @@
         <div class="flex items-center gap-3">
             <span class="text-sm text-slate-400 hidden sm:block">{{ now()->format('l, d M Y') }}</span>
 
+            <!-- Accessibility Settings Dropdown -->
+            <div x-data="{ open: false }" class="relative">
+<<<<<<< HEAD
+                <button @click="open = !open"
+=======
+                <button @click="open = !open"
+>>>>>>> origin/main
+                    class="relative w-9 h-9 flex items-center justify-center rounded-xl text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 transition-all duration-200"
+                    aria-label="Accessibility Settings"
+                    title="Accessibility Settings">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                    </svg>
+                </button>
+
+                <div x-show="open" @click.away="open = false"
+                    x-transition:enter="transition ease-out duration-200"
+                    x-transition:enter-start="opacity-0 scale-95"
+                    x-transition:enter-end="opacity-100 scale-100"
+                    x-transition:leave="transition ease-in duration-150"
+                    x-transition:leave-start="opacity-100 scale-100"
+                    x-transition:leave-end="opacity-0 scale-95"
+                    class="absolute right-[-4rem] sm:right-0 mt-2 w-[calc(100vw-2rem)] sm:w-56 max-w-sm bg-white border border-slate-100 rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.12)] overflow-hidden py-2 z-50 origin-top-right">
+                    <div class="px-4 pb-2 mb-1 border-b border-slate-100">
+                        <p class="text-sm font-semibold text-slate-800">Accessibility Tools</p>
+                    </div>
+<<<<<<< HEAD
+
+=======
+
+>>>>>>> origin/main
+                    <button @click="toggleHighContrast()" class="w-full flex items-center justify-between px-4 py-3 sm:py-2.5 text-sm text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors">
+                        <span class="flex items-center gap-2">
+                            <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/></svg>
+                            High Contrast
+                        </span>
+<<<<<<< HEAD
+                        <div class="w-8 h-4 bg-slate-200 rounded-full relative" :class="{'bg-indigo-500': highContrast}">
+                            <div class="absolute w-4 h-4 bg-white rounded-full shadow-sm transform transition-transform" :class="{'translate-x-4': highContrast, 'translate-x-0': !highContrast}"></div>
+=======
+                        <div class="w-8 h-4 bg-slate-200 rounded-full relative" :class="{'bg-indigo-500': $store.accessibility.highContrast}">
+                            <div class="absolute w-4 h-4 bg-white rounded-full shadow-sm transform transition-transform" :class="{'translate-x-4': $store.accessibility.highContrast, 'translate-x-0': !$store.accessibility.highContrast}"></div>
+>>>>>>> origin/main
+                        </div>
+                    </button>
+
+                    <button @click="toggleDyslexicFont()" class="w-full flex items-center justify-between px-4 py-3 sm:py-2.5 text-sm text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors">
+                        <span class="flex items-center gap-2">
+                            <span class="font-serif font-bold text-slate-400 text-base" aria-hidden="true">A</span>
+                            Dyslexia Font
+                        </span>
+<<<<<<< HEAD
+                        <div class="w-8 h-4 bg-slate-200 rounded-full relative" :class="{'bg-indigo-500': dyslexicFont}">
+                            <div class="absolute w-4 h-4 bg-white rounded-full shadow-sm transform transition-transform" :class="{'translate-x-4': dyslexicFont, 'translate-x-0': !dyslexicFont}"></div>
+                        </div>
+                    </button>
+
+                    <button onclick="window.dispatchEvent(new CustomEvent('toggle-reader'))" class="w-full flex items-center justify-between px-4 py-3 sm:py-2.5 text-sm text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors">
+=======
+                        <div class="w-8 h-4 bg-slate-200 rounded-full relative" :class="{'bg-indigo-500': $store.accessibility.dyslexicFont}">
+                            <div class="absolute w-4 h-4 bg-white rounded-full shadow-sm transform transition-transform" :class="{'translate-x-4': $store.accessibility.dyslexicFont, 'translate-x-0': !$store.accessibility.dyslexicFont}"></div>
+                        </div>
+                    </button>
+
+                    <button @click="toggleReadAloud()" class="w-full flex items-center justify-between px-4 py-3 sm:py-2.5 text-sm text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors">
+>>>>>>> origin/main
+                        <span class="flex items-center gap-2">
+                            <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" /></svg>
+                            Read Aloud Mode
+                        </span>
+<<<<<<< HEAD
+=======
+                        <div class="w-8 h-4 bg-slate-200 rounded-full relative" :class="{'bg-indigo-500': $store.accessibility.readAloud}">
+                            <div class="absolute w-4 h-4 bg-white rounded-full shadow-sm transform transition-transform" :class="{'translate-x-4': $store.accessibility.readAloud, 'translate-x-0': !$store.accessibility.readAloud}"></div>
+                        </div>
+>>>>>>> origin/main
+                    </button>
+                </div>
+            </div>
+
             <!-- Notifications -->
             <div x-data class="relative">
                 <!-- Bell Button -->

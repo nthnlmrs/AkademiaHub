@@ -28,6 +28,8 @@ class ProfileUpdateRequest extends FormRequest
             ],
             'tts_enabled' => ['boolean'],
             'tts_voice' => ['nullable', 'string', 'max:255'],
+            'high_contrast' => ['boolean'],
+            'dyslexia_font' => ['boolean'],
         ];
     }
 }

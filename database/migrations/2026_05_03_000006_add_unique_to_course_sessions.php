@@ -16,7 +16,9 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('course_sessions', function (Blueprint $table) {
+            $table->dropForeign(['course_id']);
             $table->dropUnique(['course_id', 'session_number']);
+            $table->foreign('course_id')->references('id')->on('courses')->cascadeOnDelete();
         });
     }
 };
